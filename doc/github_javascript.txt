@@ -1,0 +1,3 @@
+For getting URLs from github.com/repositories
+$('.title a').each(function() { console.log($(this).attr('href')) } )
+$('.title').each(function() { console.log($(this).find('a:last').attr('href')) } )
