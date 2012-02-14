@@ -20,9 +20,15 @@ class MDb(object):
           stuple += (v,)
       snames = snames[:-2] + ')'
       svals = svals[:-2] + ')'
-      self.mdb.q('INSERT INTO '+self.table_name+snames+' '+svals, stuple)
-    def where(self, clause):
-      return self.mdb.q('SELECT * FROM %s WHERE %s' % (self.table_name, clause))
+      return self.mdb.q('INSERT INTO '+self.table_name+snames+' '+svals, stuple)
+    def where(self, **vals):
+      svals, stuple = ' WHERE ', ()
+      for k,v in vals.items():
+        if v is not None:
+          svals += k + '=%s AND '
+          stuple += (v,)
+      svals = svals[:-5]
+      return self.mdb.q('SELECT * FROM '+self.table_name+svals, stuple)
     def all(self):
       return self.mdb.q('SELECT * FROM %s' % self.table_name)
     
@@ -36,6 +42,7 @@ class MDb(object):
       return self.c.fetchall()
     except MySQLdb.IntegrityError as err:
       print "Integrity Error | %s" % err
+      return -2
     
   def i(self, query, tuples=None):
     '''Make a database query and return the cursor (useful for iterating)'''
@@ -73,7 +80,7 @@ class MDbQueue:
     
   def dq(self, key):
     '''Dequeue the first thing with the given key, and set it as being in use'''
-    val = self.mdb.queues.where('k="%s" AND in_use=0 ORDER BY id ASC LIMIT 1' % key)
+    val = self.mdb.q("SELECT * FROM queues WHERE k='%s' AND in_use=0 ORDER BY id ASC LIMIT 1" % key)
     if len(val) == 0:
       return None
     self.mdb.q('UPDATE queues SET in_use = 1 WHERE id = %s', val[0][0])

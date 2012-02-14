@@ -1,0 +1,6 @@
+/cakephp/cakephp
+/symfony/symfony
+/TrinityCore/TrinityCore
+/torvalds/linux
+/zendframework/zf2
+/mirrors/linux-2.6
