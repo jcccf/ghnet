@@ -47,7 +47,10 @@ CREATE TABLE queues (
 );
 
 CREATE TABLE trending (
+  glogin varchar(255) NOT NULL,
+  gname varchar(255) NOT NULL,
   url varchar(255) NOT NULL,
   rtype varchar(255) NOT NULL,
-  PRIMARY KEY(url)
+  created_at TIMESTAMP,
+  PRIMARY KEY(glogin, gname)
 );

@@ -6,9 +6,7 @@ from dateutil.relativedelta import *
 import calendar
 db = MDb.MDb('ghnet', host='localhost', username='ghnet', password='ghnet87')
 
-# MGraph.draw_fork_trees(db)
-
-def output_commit_dates(login, name):
+def commit_weekdays(login, name):
   weekdays = []
   commit_lists = db.commits.where(glogin=login, gname=name)
   for glogin, gname, gno, json_data, created_at in commit_lists:
@@ -22,11 +20,11 @@ def output_commit_dates(login, name):
       # f.write('%s\n' % d['commit']['author']['date'].replace('T', ' ').rsplit('-', 1)[0])
   return weekdays
   
-def output_commit_dates_all():
+def commit_weekdays_all():
   weekdays_all, labels = [], []
   uniques = db.q('SELECT DISTINCT glogin, gname FROM commits WHERE gname <> "cakephp" AND gname <> "linux-2.6" AND gname <> "symfony" AND gname <> "TrinityCore" AND gname <> "zf2" ORDER BY created_at ASC')
   for glogin, gname in uniques:
-    weekdays_all.append(output_commit_dates(glogin, gname))
+    weekdays_all.append(commit_weekdays(glogin, gname))
     labels.append(gname)
   DistributionPlot.frequency_plots('data/plots/commits_over_a_week.png', weekdays_all, labels=labels, title="Proportion of commits throughout the week")
 
@@ -91,7 +89,7 @@ def commit_days_all():
     days = commit_days(glogin, gname, group_by='month')
     DistributionPlot.frequency_plots('data/plots/commits_over_time/%s_month.png' % gname, [days], labels=[gname], title="# of commits over time")  
 
-
 # contributor_dates_all()
-# output_commit_dates_all()
-commit_days_all()
+# commit_weekdays_all()
+# commit_days_all()
+MGraph.draw_fork_trees(db)

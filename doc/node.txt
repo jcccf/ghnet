@@ -1,0 +1,3 @@
+Setting crontab for trending scraper
+crontab -e
+@daily /bin/bash -l -c 'cd /ghnet/lib-node && coffee trending.coffee' >> /ghnet/log/trending.log

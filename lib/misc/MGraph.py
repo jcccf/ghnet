@@ -8,10 +8,10 @@ def draw_fork_trees(db):
   roots = db.q('SELECT DISTINCT root_gname FROM forks')
   for r in roots:
     root = r[0]
-    root_node = db.forks.where('root_gname = "%s" AND gno = 0 AND parent_glogin IS NULL LIMIT 1' % root)
+    root_node = db.q('SELECT * FROM forks WHERE root_gname = "%s" AND gno = 0 AND parent_glogin IS NULL LIMIT 1' % root)
     root_node = "%s/%s" % (root_node[0][0], root_node[0][1])
     G = nx.DiGraph()
-    nodes = db.forks.where('root_gname = "%s" AND gno = 0 AND parent_glogin IS NOT NULL' % root)
+    nodes = db.q('SELECT * FROM forks WHERE root_gname = "%s" AND gno = 0 AND parent_glogin IS NOT NULL' % root)
     for node in nodes:
       parent_node = "%s/%s" % (node[3], node[4])
       child_node = "%s/%s" % (node[0], node[1])
@@ -22,8 +22,8 @@ def draw_fork_trees(db):
     ymax=1.02*max(yy for xx,yy in pos.values())
     plt.xlim(0,xmax)
     plt.ylim(0,ymax)
-    plt.savefig('%s.svg' % root)
-    plt.savefig('%s.png' % root)
+    plt.savefig('data/graphs/forks/%s.svg' % root)
+    plt.savefig('data/graphs/forks/%s.png' % root)
     plt.clf()
 
 # G = nx.DiGraph()
