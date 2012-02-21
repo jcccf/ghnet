@@ -28,6 +28,7 @@ class MPatchPlayer:
     self.lines = []
     self.commits = {}
     self.seen = {}
+    self.lineage = []
     
   # def _match_lines(self, lines, given_line_no):
   #   for i in range(0, len(self.lines)):
@@ -47,6 +48,11 @@ class MPatchPlayer:
       return
     
     offset = 0
+    if len(self.lineage) > 0:
+      new_level = [i for i in range(0, len(self.lineage[-1]))]
+    else:
+      new_level = []
+
     self.commits[patch_obj.sha] = (patch_obj.author, patch_obj.email, patch_obj.date)
     for a_start, a_end, b_start, b_end, lines in patch_obj.patches:
       
@@ -84,10 +90,36 @@ class MPatchPlayer:
           self.pp(lines_replacing)
           raise Exception
       
+      # Generate Lineage
+      # Limit change area to the boundaries of + and - on both sides of the patch
+      x1, x2 = 0, 0
+      while lines[x1][0] != '-' and lines[x1][0] != '+':
+        x1 += 1
+      while lines[-x2-1][0] != '-' and lines[-x2-1][0] != '+':
+        x2 += 1
+      
+      # Extend "influence" by 1 line in each direction
+      # Helps especially when a line was simply added, so that its parents are the line before and after
+      new_start, new_end = a_start-1+x1, a_start-2+a_end-x2
+      if new_start > 0:
+        new_start -= 1
+      if len(self.lineage) > 0 and new_end < len(self.lineage[-1]) - 1:
+        new_end += 1
+      new_level_portion = [(new_start, new_end)] * (b_end-x1-x2)
+            
+      # print a_start, a_end, b_start, b_end, x1, x2
+      # print lines
+      # print new_level_portion
+      level_before, level_after = new_level[:a_start+x1-1+offset], new_level[a_start+a_end-x2-1+offset:]
+      new_level = level_before + new_level_portion + level_after
+      
       # Update line and offset
       self.lines = lines_before + newlines + lines_after
       offset += b_end - a_end
-  
+    
+    # Append new level to lineage
+    self.lineage.append(new_level)
+      
   def pp(self, lines=None):
     if lines is None:
       lines = self.lines
@@ -130,12 +162,16 @@ class MGit:
       self.patches.append(self.parse_commit(commit))
     self.patches.reverse()
     path = self._patch_path()
-    print len(path)
+    print "Path Length:", len(path)
     player = MPatchPlayer()
     for patch in path:
       player.apply(patch)
+    # for lin in player.lineage:
+    #   print lin
+    return player
 
   def _build_path(self, next):
+    '''Helper for _patch_path'''
     if next in self.adjacencies:
       max_val, max_path = 0, []
       for adj in self.adjacencies[next]:
@@ -147,6 +183,7 @@ class MGit:
       return (1, [self.patch_dict[next]])
 
   def _patch_path(self):
+    '''Generate the longest path through the given patches from the first patch, so that we can replay changes'''
     self.adjacencies, self.patch_dict, path = {}, {}, []
     for patch in self.patches:
       if patch.is_rename is False:
@@ -156,6 +193,7 @@ class MGit:
     return path
 
   def parse_commit(self, lines):
+    '''Parse a single commit when calling git diff'''
     patch, mode = None, 'commit'
     for l in lines:
       if mode == 'commit':
@@ -210,5 +248,9 @@ class MGit:
       patch.add_patch(a_start, a_end, b_start, b_end, patch_lines)
     return patch
 
-git = MGit('../rails')
-git.history('actionpack/lib/action_dispatch/http/mime_types.rb')
+if __name__ == '__main__':
+  git = MGit('../rails')
+  player = git.history('actionpack/lib/action_dispatch/http/mime_type.rb')
+  import MGraph
+  os.chdir('../ghnet')
+  MGraph.draw_lineage(player.lineage)
