@@ -42,7 +42,7 @@ def plot_multiline(name, dict_array, xlabel='', ylabel='', title='', linetypes=[
   plt.savefig('../data/images/%s.eps' % name)
 
 # Plot log y against log x (log-log plot)
-def plot_loglog(name, dict, xlabel='', ylabel='', title='', linetype='k'):
+def plot_loglog(name, dict, xlabel='', ylabel='', title='', linetype='b'):
 	plt.clf()
 	if len(xlabel) > 0:
 		plt.xlabel(xlabel)
@@ -53,7 +53,7 @@ def plot_loglog(name, dict, xlabel='', ylabel='', title='', linetype='k'):
 
 	dicty = zip(*sorted(dict.iteritems()))
 	plt.loglog(dicty[0], dicty[1], linetype)
-	plt.savefig('../data/images/%s.eps' % name)	
+	plt.savefig('%s' % name)	
 	
 # Plot y against log x (semi-log plot)
 def plot_log(name, dict, xlabel='', ylabel='', title='', linetype='k', log=2):

@@ -109,6 +109,15 @@ def seed_commits_detailed(login, name):
       db_queue.q('commits_d', (glogin, gname, d['sha'], d['url']))
   db.commit()
   
+def seed_rails():
+  '''Redo invalid commit logs'''
+  with open('data/rails_commits.txt', 'r') as f:
+    for l in f:
+      sha = l.replace('\n', '').strip()
+      db.q('DELETE FROM commits_detailed WHERE sha=%s', sha)
+      db_queue.q('commits_d', ('rails', 'rails', sha, "https://api.github.com/repos/rails/rails/commits/%s" % sha))
+  db.commit()
+  
 def commits_detailed():
   while True:
     deq = db_queue.dq('commits_d')
@@ -117,7 +126,7 @@ def commits_detailed():
     idd, (login, name, sha, url) = deq
     try:
       data = g.request(url)
-      db.commits_detailed.insert(glogin=login, gname=name, sha=sha, commit_date=data['commit']['author']['date'], json=json.dumps(data))
+      db.commits_detailed.insert(glogin=login, gname=name, sha=sha, commit_date=data['commit']['committer']['date'], json=json.dumps(data))
       db.commit()
       db_queue.dq_end(idd)
     except GithubScraper.NotFoundError as err: # 404 File Not Found
@@ -127,10 +136,10 @@ def commits_detailed():
 
 # seed_forks('data/popular_forked_20120206.txt')
 # fork_tree()
-seed_commits('data/popular_forked_redo.txt')
-commits()
-seed_repos('data/popular_forked_redo.txt')
-repos()
+# seed_commits('data/popular_forked_redo.txt')
+# commits()
+# seed_repos('data/popular_forked_redo.txt')
+# repos()
 
 # seed_repos('data/popular_watched_20120206.txt')
 # repos()
@@ -139,5 +148,12 @@ repos()
 # seed_commits('data/popular_watched_20120206.txt')
 # commits()
 
+# seed_repos('data/interesting_20120206.txt')
+# repos()
+# seed_forks('data/interesting_20120206.txt')
+# fork_tree()
+# seed_commits('data/interesting_20120206.txt')
+# commits()
+
 # seed_commits_detailed('rails', 'rails') 
-# commits_detailed() # Still undone
+commits_detailed() # Still undone
