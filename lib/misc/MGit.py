@@ -4,6 +4,7 @@ from dateutil import parser as dtparser
 from dateutil.relativedelta import *
 
 class MPatch:
+  '''A collection of patches'''
   def __init__(self, sha):
     self.sha = sha
     self.patches = []
@@ -24,6 +25,7 @@ class MPatch:
     self.index_b = b
 
 class MPatchPlayer:
+  '''Plays MPatches in sequence'''
   def __init__(self):
     self.lines = []
     self.commits = {}
@@ -121,6 +123,7 @@ class MPatchPlayer:
     self.lineage.append(new_level)
       
   def pp(self, lines=None):
+    '''Pretty print current lines or given lines'''
     if lines is None:
       lines = self.lines
     print "---"

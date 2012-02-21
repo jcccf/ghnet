@@ -60,7 +60,7 @@ def seed(type, filename):
   repos = MFile.read_login_name(filename)
   for glogin, gname in repos:
     db_queue.q(type, (glogin, gname))
-  db.commt()
+  db.commit()
 
 def seed_commits(filename):
   seed('commits')
@@ -84,8 +84,12 @@ def issues():
       break
     idd, (login, name) = deq
     try:
-      for num, data in enumerate(g.repo_issues(login, name)):
-        if db.issues.insert(glogin=login, gname=name, gno=num, json=json.dumps(data)) == -2:
+      for num, data in enumerate(g.repo_issues(login, name, 'open')):
+        if db.issues.insert(glogin=login, gname=name, gno=num, json=json.dumps(data), is_open=1) == -2:
+          break
+      db.commit()
+      for num, data in enumerate(g.repo_issues(login, name, 'closed')):
+        if db.issues.insert(glogin=login, gname=name, gno=num, json=json.dumps(data), is_open=0) == -2:
           break
       db.commit()
       db_queue.dq_end(idd)
@@ -101,8 +105,12 @@ def pull_requests():
       break
     idd, (login, name) = deq
     try:
-      for num, data in enumerate(g.repo_pull_requests(login, name)):
-        if db.pull_requests.insert(glogin=login, gname=name, gno=num, json=json.dumps(data)) == -2:
+      for num, data in enumerate(g.repo_pull_requests(login, name, 'open')):
+        if db.pull_requests.insert(glogin=login, gname=name, gno=num, json=json.dumps(data), is_open=1) == -2:
+          break
+      db.commit()
+      for num, data in enumerate(g.repo_pull_requests(login, name, 'closed')):
+        if db.pull_requests.insert(glogin=login, gname=name, gno=num, json=json.dumps(data), is_open=0) == -2:
           break
       db.commit()
       db_queue.dq_end(idd)

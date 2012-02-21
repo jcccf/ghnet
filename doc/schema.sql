@@ -23,18 +23,20 @@ CREATE TABLE issues (
 	glogin VARCHAR(255) NOT NULL,
 	gname VARCHAR(255) NOT NULL,
 	gno INT(10) UNSIGNED NOT NULL,
+	is_open INT(1) UNSIGNED NOT NULL,
 	json MEDIUMTEXT NOT NULL,
 	created_at TIMESTAMP,
-	PRIMARY KEY (glogin, gname, gno)
+	PRIMARY KEY (glogin, gname, gno, is_open)
 );
 
 CREATE TABLE pull_requests (
 	glogin VARCHAR(255) NOT NULL,
 	gname VARCHAR(255) NOT NULL,
 	gno INT(10) UNSIGNED NOT NULL,
+	is_open INT(1) UNSIGNED NOT NULL,
 	json MEDIUMTEXT NOT NULL,
 	created_at TIMESTAMP,
-	PRIMARY KEY (glogin, gname, gno)
+	PRIMARY KEY (glogin, gname, gno, is_open)
 );
 
 
