@@ -97,3 +97,15 @@ class GithubScraper:
     
   def repo_forks(self, user, repo):
     return self.multipage_request('repos/%s/%s/forks' % (user, repo))
+    
+  def repo_pull_requests(self, user, repo):
+    return self.multipage_request('repos/%s/%s/pulls' % (user, repo))
+    
+  def repo_issues(self, user, repo):
+    return self.multipage_request('repos/%s/%s/issues' % (user, repo))
+    
+  def repo_issue_comments(self, user, repo, id):
+    return self.multipage_request('repos/%s/%s/issues/%s/comments' % (user, repo, id))
+    
+  def repo_issue_events(self, user, repo, id):
+    return self.multipage_request('repos/%s/%s/issues/%s/events' % (user, repo, id))

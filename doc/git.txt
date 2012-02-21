@@ -1,0 +1,28 @@
+Show difference between two files on diff commits
+---
+git diff [sha1]:[file_path1] [sha2]:[file_path2]
+
+
+Show version of file at specific commit
+---
+git show [sha]:[file_path]
+
+
+Get history of file across renames
+---
+git log --follow -p [file_path]
+
+
+Show recent commits
+---
+git log
+
+
+Show renames only in a commit
+---
+git diff -M --diff-filter=R [sha]
+
+
+See which commits/authors responsible for edits in a file
+---
+git blame -M [sha] [file_path]

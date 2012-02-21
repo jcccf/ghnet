@@ -19,6 +19,25 @@ CREATE TABLE commits (
 	PRIMARY KEY (glogin, gname, gno)
 );
 
+CREATE TABLE issues (
+	glogin VARCHAR(255) NOT NULL,
+	gname VARCHAR(255) NOT NULL,
+	gno INT(10) UNSIGNED NOT NULL,
+	json MEDIUMTEXT NOT NULL,
+	created_at TIMESTAMP,
+	PRIMARY KEY (glogin, gname, gno)
+);
+
+CREATE TABLE pull_requests (
+	glogin VARCHAR(255) NOT NULL,
+	gname VARCHAR(255) NOT NULL,
+	gno INT(10) UNSIGNED NOT NULL,
+	json MEDIUMTEXT NOT NULL,
+	created_at TIMESTAMP,
+	PRIMARY KEY (glogin, gname, gno)
+);
+
+
 CREATE TABLE commits_detailed (
 	glogin VARCHAR(255) NOT NULL,
 	gname VARCHAR(255) NOT NULL,

@@ -53,8 +53,63 @@ def seed_forks(filename):
   db.commit()
 
 #
-# Scrape Commits
+# Seeding
 #
+
+def seed(type, filename):
+  repos = MFile.read_login_name(filename)
+  for glogin, gname in repos:
+    db_queue.q(type, (glogin, gname))
+  db.commt()
+
+def seed_commits(filename):
+  seed('commits')
+  
+def seed_repos(filename):
+  seed('repos', filename)
+
+def seed_issues(filename):
+  seed('issues', filename)
+  
+def seed_pull_requests(filename):
+  seed('pulls', filename)
+
+#
+# Scraping
+#
+def issues():
+  while True:
+    deq = db_queue.dq('issues')
+    if deq is None:
+      break
+    idd, (login, name) = deq
+    try:
+      for num, data in enumerate(g.repo_issues(login, name)):
+        if db.issues.insert(glogin=login, gname=name, gno=num, json=json.dumps(data)) == -2:
+          break
+      db.commit()
+      db_queue.dq_end(idd)
+    except GithubScraper.NotFoundError as err: # 404 File Not Found
+      db_queue.dq_skip(idd)
+    except GithubScraper.NoneError as err: # Other random error
+      db_queue.dq_rollback(idd)
+      
+def pull_requests():
+  while True:
+    deq = db_queue.dq('pulls')
+    if deq is None:
+      break
+    idd, (login, name) = deq
+    try:
+      for num, data in enumerate(g.repo_pull_requests(login, name)):
+        if db.pull_requests.insert(glogin=login, gname=name, gno=num, json=json.dumps(data)) == -2:
+          break
+      db.commit()
+      db_queue.dq_end(idd)
+    except GithubScraper.NotFoundError as err: # 404 File Not Found
+      db_queue.dq_skip(idd)
+    except GithubScraper.NoneError as err: # Other random error
+      db_queue.dq_rollback(idd)
 
 def commits():
   while True:
@@ -72,19 +127,7 @@ def commits():
       db_queue.dq_skip(idd)
     except GithubScraper.NoneError as err: # Other random error
       db_queue.dq_rollback(idd)
-      
-def seed_commits(filename):
-  repos = MFile.read_login_name(filename)
-  for glogin, gname in repos:
-    db_queue.q('commits', (glogin, gname))
-  db.commit()
-  
-def seed_repos(filename):
-  repos = MFile.read_login_name(filename)
-  for glogin, gname in repos:
-    db_queue.q('repos', (glogin, gname))
-  db.commit()
-  
+
 def repos():
   while True:
     deq = db_queue.dq('repos')
@@ -140,6 +183,10 @@ def commits_detailed():
 # commits()
 # seed_repos('data/popular_forked_redo.txt')
 # repos()
+seed_issues('data/popular_forked_20120206.txt')
+issues()
+seed_pull_requests('data/popular_forked_20120206.txt')
+pull_requests()
 
 # seed_repos('data/popular_watched_20120206.txt')
 # repos()
@@ -156,4 +203,4 @@ def commits_detailed():
 # commits()
 
 # seed_commits_detailed('rails', 'rails') 
-commits_detailed() # Still undone
+# commits_detailed() # Still undone
