@@ -95,9 +95,47 @@ def issues():
       db_queue.dq_end(idd)
     except GithubScraper.NotFoundError as err: # 404 File Not Found
       db_queue.dq_skip(idd)
+    except GithubScraper.GoneError as err: # 404 File Not Found
+      db_queue.dq_skip(idd)
     except GithubScraper.NoneError as err: # Other random error
       db_queue.dq_rollback(idd)
-      
+
+def seed_issues_detailed(filename):
+  repos = MFile.read_login_name(filename)
+  for login, name in repos:
+    issue_lists = db.issues.where(glogin=login, gname=name)
+    for glogin, gname, gno, is_open, json_data, created_at in issue_lists:
+      data = json.loads(json_data)
+      for d in data:
+        db_queue.q('issues_d', (glogin, gname, d['number']))
+    db.commit()
+    
+def issues_detailed():
+  while True:
+    deq = db_queue.dq('issues_d')
+    if deq is None:
+      break
+    idd, (login, name, number) = deq
+    try:
+      data = g.repo_issue(login, name, number)
+      if data['pull_request'] is None or data['pull_request']['patch_url'] is None:
+        is_pull_request = 0
+      else:
+        is_pull_request = 1
+      db.issues_detailed.insert(glogin=login, gname=name, gnum=number, state=data['state'], is_pull_request=is_pull_request, issue_date=data['created_at'], json=json.dumps(data))
+      for num, data in enumerate(g.repo_issue_comments(login, name, number)):
+        if db.issues_comments.insert(glogin=login, gname=name, gnum=number, gno=num, json=json.dumps(data)) == -2:
+          break
+      for num, data in enumerate(g.repo_issue_events(login, name, number)):
+        if db.issues_events.insert(glogin=login, gname=name, gnum=number, gno=num, json=json.dumps(data)) == -2:
+          break
+      db.commit()
+      db_queue.dq_end(idd)
+    except GithubScraper.NotFoundError as err: # 404 File Not Found
+      db_queue.dq_skip(idd)
+    except GithubScraper.NoneError as err: # Other random error
+      db_queue.dq_rollback(idd)
+
 def pull_requests():
   while True:
     deq = db_queue.dq('pulls')
@@ -115,6 +153,8 @@ def pull_requests():
       db.commit()
       db_queue.dq_end(idd)
     except GithubScraper.NotFoundError as err: # 404 File Not Found
+      db_queue.dq_skip(idd)
+    except GithubScraper.GoneError as err: # 404 File Not Found
       db_queue.dq_skip(idd)
     except GithubScraper.NoneError as err: # Other random error
       db_queue.dq_rollback(idd)
@@ -191,10 +231,12 @@ def commits_detailed():
 # commits()
 # seed_repos('data/popular_forked_redo.txt')
 # repos()
-seed_issues('data/popular_forked_20120206.txt')
-issues()
-seed_pull_requests('data/popular_forked_20120206.txt')
-pull_requests()
+# seed_issues('data/popular_forked_20120206.txt')
+# issues()
+# seed_pull_requests('data/popular_forked_20120206.txt')
+# pull_requests()
+# seed_issues_detailed('data/popular_forked_20120206.txt')
+issues_detailed()
 
 # seed_repos('data/popular_watched_20120206.txt')
 # repos()

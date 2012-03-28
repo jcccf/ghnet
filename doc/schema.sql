@@ -29,6 +29,38 @@ CREATE TABLE issues (
 	PRIMARY KEY (glogin, gname, gno, is_open)
 );
 
+CREATE TABLE issues_detailed (
+	glogin VARCHAR(255) NOT NULL,
+	gname VARCHAR(255) NOT NULL,
+	gnum INT(10) UNSIGNED NOT NULL,
+	state VARCHAR(255) NOT NULL,
+	is_pull_request INT(1) UNSIGNED NOT NULL,
+	issue_date DATETIME NOT NULL,
+	json MEDIUMTEXT NOT NULL,
+	created_at TIMESTAMP,
+	PRIMARY KEY (glogin, gname, gnum)
+);
+
+CREATE TABLE issues_comments (
+	glogin VARCHAR(255) NOT NULL,
+	gname VARCHAR(255) NOT NULL,
+	gnum INT(10) UNSIGNED NOT NULL,
+	gno INT(10) UNSIGNED NOT NULL,
+	json MEDIUMTEXT NOT NULL,
+	created_at TIMESTAMP,
+	PRIMARY KEY (glogin, gname, gnum, gno)
+);
+
+CREATE TABLE issues_events (
+	glogin VARCHAR(255) NOT NULL,
+	gname VARCHAR(255) NOT NULL,
+	gnum INT(10) UNSIGNED NOT NULL,
+	gno INT(10) UNSIGNED NOT NULL,
+	json MEDIUMTEXT NOT NULL,
+	created_at TIMESTAMP,
+	PRIMARY KEY (glogin, gname, gnum, gno)
+);
+
 CREATE TABLE pull_requests (
 	glogin VARCHAR(255) NOT NULL,
 	gname VARCHAR(255) NOT NULL,

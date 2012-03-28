@@ -8,7 +8,10 @@ class NotFoundError(Exception):
 
 class NoneError(Exception):
   pass
-
+  
+class GoneError(Exception):
+  pass
+  
 class GithubScraper:
   
   def __init__(self, username="ghnet", password="ghnet78"):
@@ -55,6 +58,8 @@ class GithubScraper:
       print "HTTPError | %s | %s" % (url, err)
       if "404" in str(err):
         raise NotFoundError()
+      elif "410" in str(err):
+        raise GoneError()
       else:
         raise NoneError()
   
@@ -103,6 +108,9 @@ class GithubScraper:
     
   def repo_issues(self, user, repo, state='open'):
     return self.multipage_request('repos/%s/%s/issues?state=%s' % (user, repo, state))
+
+  def repo_issue(self, user, repo, id):
+    return self.request('repos/%s/%s/issues/%s' % (user, repo, id))
     
   def repo_issue_comments(self, user, repo, id):
     return self.multipage_request('repos/%s/%s/issues/%s/comments' % (user, repo, id))
