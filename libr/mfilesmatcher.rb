@@ -49,6 +49,18 @@ class FilesMatcher
   def dependencies(filename)
     Set.new(probable_dependencies(filename).find_all {|d| d.any? }.map {|d| d.first }).to_a
   end
+  
+  def dependency_graph_to_file(filename)
+    nl = MGraph.new
+    @filelist.each do |filename,v|
+      nl[filename] ||= Node.new(filename)
+      dependencies(filename).each do |dependent_file|
+        nl[dependent_file] ||= Node.new(dependent_file)
+        nl[filename].edge_to(nl[dependent_file])
+      end
+    end
+    nl.to_file(filename)
+  end
 
 end
 
@@ -57,7 +69,7 @@ end
 # TODO autoload load include
 class RubyFilesMatcher < FilesMatcher
     
-  @@req_regex = /[\s]*require(_relative)?[\s]*[\'\"]{1}([a-zA-Z0-9_\/]+)[\'\"]{1}[\s]*(#[.]*)?/ # regex to check for a require or require_relative line
+  @@req_regex = /[\s]*require(_relative)?[\s]*[\'\"]{1}(\#\{[a-zA-Z0-9_]+\}\/)?([a-zA-Z0-9_\/]+)[\'\"]{1}[\s]*(#[.]*)?/ # regex to check for a require or require_relative line
   
   def probable_dependencies(filename)
     matchys, deps = [], []
@@ -66,7 +78,15 @@ class RubyFilesMatcher < FilesMatcher
     # Get all possible dependencies in the current file
     open_file(filename) do |f|
       f.each do |l|
-        deps << l.scan(@@req_regex)[0][1] if l =~ @@req_regex
+        begin
+          if l =~ @@req_regex
+            deps << l.scan(@@req_regex)[0][2]
+          # else
+          #   puts l if l.include? "require"
+          end
+        rescue ArgumentError
+          puts "Failed to parse line %s" % l
+        end
       end
     end
     
@@ -94,14 +114,5 @@ class RubyFilesMatcher < FilesMatcher
   end
 end
 
-rbm = RubyFilesMatcher.new '../rails'
-# puts rbm.filelist
-nl = NodeDict.new
-rbm.filelist.each do |filename,v|
-  nl[filename] ||= Node.new(filename)
-  rbm.dependencies(filename).each do |dependent_file|
-    nl[dependent_file] ||= Node.new(dependent_file)
-    nl[filename].edge_to(nl[dependent_file])
-  end
-end
-nl.to_file('rails_dep.txt')
+# rbm = RubyFilesMatcher.new '../rails'
+# rbm.dependency_graph_to_file('rails_dep.txt')
