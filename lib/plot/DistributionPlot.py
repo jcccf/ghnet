@@ -9,6 +9,17 @@ def colors(length):
   for i in range(length):
     colors.append(c(1.*i/length))
   return colors
+  
+def smoothed_line(xy_list, sliding_window=10):
+  xydict = {}
+  xs, ys = zip(*xy_list)
+  xmax = max(xs)
+  for x, y in xy_list:
+    for xreal in range(max(x-sliding_window/2, 0), min(x+sliding_window/2+1, xmax)):
+      xydict.setdefault(xreal, []).append(y)
+  xy2 = sorted([(x, sum(y)/len(y)) for x, y in xydict.iteritems()])
+  xs2, ys2 = zip(*xy2)
+  return (xs2, ys2) 
 
 def histogram_plot(filename, xs, bins=1, normed=1, color='b', label='hello', ylim=None, xlim=None, xlabel=None, ylabel=None, histtype='stepfilled'):
   plt.clf()
@@ -49,25 +60,28 @@ def activity_plot(filename, lists, labels):
   
   plt.savefig('%s' % filename)
 
-def scatter_plot(filename, xy_list):
+def scatter_plot(filename, xy_list, other_xy_lists=[], sliding_window=10, title=None):
   import numpy as np
   
   plt.clf()
-  plt.figure().set_size_inches(20,10)
+  fig = plt.figure()
+  fig.set_size_inches(20,10)
   ax = plt.subplot(111)
+  
+  # Plot smoothed lines for other lists
+  ccolors = colors(len(other_xy_lists))
+  for i, listy in enumerate(other_xy_lists):
+    oxs2, oys2 = smoothed_line(listy, sliding_window = sliding_window)
+    ax.plot(oxs2, oys2, color=ccolors[i])
+  
+  # Plot scatter for xy_list
   xs, ys = zip(*xy_list)
   ax.scatter(xs, ys, marker='x', color='b')
   # ax.set_aspect(1.)
   
-  # Plot average line too
-  xydict = {}
-  for x, y in xy_list:
-    for xreal in range(max(x-5, 0), x+6): #Sliding window of 10
-      xydict.setdefault(xreal, []).append(y)
-  xmax = max(xs)
-  xy2 = sorted([(x, sum(y)/len(y)) for x, y in xydict.iteritems() if x <= xmax])
-  xs2, ys2 = zip(*xy2)
-  ax.plot(xs2, ys2, 'g')
+  # Plot smoothed line for xy_list
+  xs2, ys2 = smoothed_line(xy_list, sliding_window=sliding_window)
+  ax.plot(xs2, ys2, 'k')
   
   from mpl_toolkits.axes_grid1 import make_axes_locatable
   divider = make_axes_locatable(ax)
@@ -96,6 +110,9 @@ def scatter_plot(filename, xy_list):
   for tl in axHisty.get_yticklabels():
       tl.set_visible(False)
   axHisty.set_xticks([0, 50, 100])
+  
+  if title:
+    fig.text(.5, .95, title, horizontalalignment='center')
 
   plt.savefig('%s' % filename)
   

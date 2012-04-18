@@ -8,7 +8,7 @@ class MCommits
   
   include Enumerable
   
-  def initialize(filename, commits_per_block=200, yield_remainder=false)
+  def initialize(filename, commits_per_block=200, yield_remainder=true)
     @commits_per_block = commits_per_block
     @yield_remainder = yield_remainder
     File.open(filename, 'rb') { |f| @commits = JSON.parse(f.read) }
@@ -18,22 +18,32 @@ class MCommits
   def each
     n = @commits.size / @commits_per_block
     remainder = @commits.size - n * @commits_per_block
-    if @yield_remainder
-      yield @commits[0..remainder-1]
-    end
     n.times do |i|
-      start_index, end_index = remainder+(i*@commits_per_block), (remainder+(i+1)*@commits_per_block)-1
+      start_index, end_index = i*@commits_per_block, (i+1)*@commits_per_block-1
       # -(i+1)*@commits_per_block, -(i*@commits_per_block + 1)
       yield @commits[start_index..end_index]
     end
+    if @yield_remainder && remainder > 0
+      start_index, end_index = n*@commits_per_block, n*@commits_per_block + remainder - 1
+      yield @commits[start_index, end_index]
+    end
   end
   
+  # Return the number of blocks that will be yielded for each
+  def num_blocks
+    n = @commits.size / @commits_per_block
+    n += 1 if @yield_remainder && n * @commits_per_block < @commits.size
+    n
+  end
+  
+  # Return an array of all commits
   def all_commits
-    ac = []
-    self.each do |commits|
-      ac += commits
-    end
-    ac
+    # ac = []
+    # self.each do |commits|
+    #   ac += commits
+    # end
+    # ac
+    @commits
   end
   
 end
@@ -95,24 +105,26 @@ end
 
 # Generate a list of 0s or 1s depending on whether an itemset is present in a commit
 def itemset_occurrences(commits, itemset, filename)
-  is = Set.new(itemset)
-  pathlists = commits.map { |commit| Set.new(commit['paths']) }.compact
+  itemset_set = Set.new(itemset)
+  item_occurrences = {}
+  itemset.each { |item| item_occurrences[item] = [] }
+  pathlists = commits.map { |commit| Set.new(commit['paths']) }
   x = []
   pathlists.each do |pathlist|
-    if is.subset? pathlist
-      x << 1
-    else
-      x << 0
+    x << ((itemset_set.subset? pathlist) ? 1 : 0)
+    itemset.each do |item|
+      item_occurrences[item] << ((pathlist.include? item) ? 1 : 0)
     end
   end
   File.open(filename, 'w') do |f|
-    f.write(JSON.generate({ :itemset => itemset, :occurrences => x}))
+    f.write(JSON.generate({ :itemset => itemset, :occurrences => x, :items => item_occurrences }))
   end
 end
 
 # Given a list of commits, a directory of frequent itemsets, and a threshold,
 # output all occurrences for each itemset of the (threshold) most frequent itemsets
 def all_itemset_occurrences(commits_file, directory, threshold=0.1)
+  puts "Generating itemset occurrences with Threshold %f..." % threshold
   all_commits = MCommits.new(commits_file, 200, true).all_commits
   
   frequencies = Hash.new(0)
@@ -142,8 +154,7 @@ def all_itemset_occurrences(commits_file, directory, threshold=0.1)
 end
 
 if __FILE__ == $0
-  mc = MCommits.new('data/commits_all/cloud-crowd.txt', 200, true)
-  
+  # mc = MCommits.new('data/commits_all/diaspora.txt', 200, true)  
   # a = Set.new
   # mc.each do |commits|
   #   puts commits.size
@@ -153,6 +164,7 @@ if __FILE__ == $0
   #   # files_commits_graph(commits, 'test.txt')
   # end
   # puts "Total Set Size: %d" % a.size
+  # puts mc.all_commits
   
   # all_commits = []
   # mc.each do |commits|

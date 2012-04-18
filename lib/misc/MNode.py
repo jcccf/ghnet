@@ -46,12 +46,12 @@ def csv_to_digraph(filename):
         g.add_edge(row['n2'], row['n1'], weight=row['w'])
   return g
   
-def graphviz_to_image(A, filename):
+def graphviz_to_image(A, filename, prog='neato'):
   '''Output a PyGraphViz graph object to an image'''
   print "Drawing..."
   with warnings.catch_warnings():
     warnings.simplefilter("ignore")
-    A.layout(prog='neato')
+    A.layout(prog=prog)
     A.draw(filename)
   # plt.clf()
   # pos = nx.graphviz_layout(G,prog="dot")
@@ -62,16 +62,36 @@ def format_graphviz(A):
   A.edge_attr['color'] = 'blue'
   A.node_attr['shape'] = 'point'
   A.edge_attr['arrowsize'] = '0.2'
+  
+def format_graphviz_labels(A):
   # A.node_attr['shape']='circle' # point
   # A.node_attr['width']='0.15'
   # A.node_attr['height']='0.15'
   # A.node_attr['fixedsize']='true'
-  # A.node_attr['fontsize']='9'
-  # A.node_attr['forcelabels']='true'
-  # A.node_attr['style']='filled'
-  # A.node_attr['color']='#bbbbbb'
-  # A.node_attr['fillcolor']='#bbbbbb'
-  # A.node_attr['fontname']='Helvetica'
+  A.node_attr['fontsize']='9'
+  A.node_attr['forcelabels']='true'
+  A.node_attr['style']='filled'
+  A.node_attr['color']='#bbbbbb'
+  A.node_attr['fillcolor']='#bbbbbb'
+  A.node_attr['fontname']='Helvetica'
+  
+def filter_graph(g, threshold=0.1):
+  g2 = nx.Graph()
+  edgys = [(n1, n2, data, float(data['weight'])) for n1, n2, data in g.edges_iter(data=True)]
+  edgys = sorted(edgys, key=lambda x: -x[3])
+  for n1, n2, data, _ in edgys[0:int(len(edgys)*threshold)]:
+    g2.add_edge(n1, n2, attr_dict=data)
+  return g2
+
+def graph_to_graphviz(G, labels=False):
+  A = nx.to_agraph(nx.Graph())
+  if labels:
+    format_graphviz_labels(A)
+  else:
+    format_graphviz(A)
+  for n1, n2, data in G.edges_iter(data=True):
+    A.add_edge(n1, n2, style="setlinewidth(1)", color=get_color(data['weight'], "green"), arrowsize=0.0)
+  return A
 
 def superposition(diG, G, remove_nodes=True):
   '''Superimpose the undirected graph G on the digraph diG,
@@ -94,58 +114,76 @@ def superposition(diG, G, remove_nodes=True):
   diG = nx.MultiDiGraph(diG) 
   A = nx.to_agraph(diG)
   format_graphviz(A)
-  conflicts = 0 # keep a count of the number of "conflicts" (path exists)
+  conflicts = [] # keep a list of the number of "conflicts" (path exists)
 
   # Add G to diG without arrows since G is undirected,
   # and in red or green depending on whether a path exists between n1 and n2
   for n1, n2, data in G.edges_iter(data=True):
     if diG.has_node(n1) and diG.has_node(n2) and (nx.has_path(diG, n1, n2) or nx.has_path(diG, n2, n1)):
       A.add_edge(n1, n2, style="setlinewidth(1)", color=get_color(data['weight'], "red"), arrowsize=0.0)
-      conflicts += float(data['weight'])
+      conflicts.append((str(n1), str(n2), float(data['weight'])))
     else:
       A.add_edge(n1, n2, style="setlinewidth(1)", color=get_color(data['weight'], "green"), arrowsize=0.0)
   
   return (A, conflicts, remaining_num)
 
 if __name__ == '__main__':
+  n = 200
   import os
   dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
   for diry in dirs:
     print diry
-    directory = os.path.join('data/dependency_graphs', diry)
-    with open('%s/200/conflicts_itemsets.txt' % directory, 'w') as f:
-      writer = csv.writer(f)
+    directory = os.path.join('data/dependency_graphs', diry, str(n))
+    with open('%s/all_conflicts_itemsets.txt' % directory, 'w') as f, open('%s/all_conflicts.txt' % directory, 'w') as f2:
+      writer, writer2 = csv.writer(f), csv.writer(f2)
       writer.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
+      writer2.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
       i = 0
       while True:
         try:
-          g, diG = csv_to_graph('%s/200/fq_%d.txt' % (directory, i)), csv_to_digraph('%s/200/dep_%d.txt' % (directory, i))
+          # Itemset Conflicts
+          g, diG = csv_to_graph('%s/fq_%d.txt' % (directory, i)), csv_to_digraph('%s/dep_%d.txt' % (directory, i))
           a, conflicts, remaining_num = superposition(diG, g)
-          graphviz_to_image(a, '%s/200/sup_fq_%d.svg' % (directory, i))
-          print "Number of conflicts:", conflicts
-          writer.writerow([conflicts, len(g.edges()), len(diG.edges()), remaining_num])
+          graphviz_to_image(a, '%s/sup_fq_%d.svg' % (directory, i))
+          # Write out conflicted edges to CSV in descending # of conflicts
+          with open('%s/conflicts_itemsets_%d.txt' % (directory, i), 'w') as f:
+            iswriter = csv.writer(f)
+            iswriter.writerow(["n1", "n2", "conflicts"])
+            for x in sorted(conflicts, key=lambda x: -x[2]):
+              iswriter.writerow(x)
+          num_conflicts = sum([x[2] for x in conflicts])
+          print "Itemset conflicts:", num_conflicts
+          writer.writerow([num_conflicts, len(g.edges()), len(diG.edges()), remaining_num])
+          
+          # Regular Conflicts
+          g, diG = csv_to_graph('%s/fc_%d.txt' % (directory, i)), csv_to_digraph('%s/dep_%d.txt' % (directory, i))
+          a, conflicts, remaining_num = superposition(diG, g)
+          graphviz_to_image(a, '%s/sup_fc_%d.svg' % (directory, i))
+          # Write out conflicted edges to CSV in descending # of conflicts
+          with open('%s/conflicts_%d.txt' % (directory, i), 'w') as f:
+            iswriter = csv.writer(f)
+            iswriter.writerow(["n1", "n2", "conflicts"])
+            for x in sorted(conflicts, key=lambda x: -x[2]):
+              iswriter.writerow(x)
+          num_conflicts = sum([x[2] for x in conflicts])
+          print "Regular conflicts:", num_conflicts
+          writer2.writerow([num_conflicts, len(g.edges()), len(diG.edges()), remaining_num])
+          
+          # Generate Author Collaboration Graph
+          g = csv_to_graph('%s/au_%d.txt' % (directory, i))
+          a = graph_to_graphviz(g)
+          graphviz_to_image(a, '%s/graph_ac_%d.svg' % (directory, i))
+          
+          # Generate Itemset Graph
+          g = csv_to_graph('%s/fq_%d.txt' % (directory, i))
+          a = graph_to_graphviz(g)
+          graphviz_to_image(a, '%s/graph_fq_%d.svg' % (directory, i))
+          # Create Most Frequent Itemset Graph with Labels
+          g = filter_graph(g)
+          a = graph_to_graphviz(g, labels=True)
+          graphviz_to_image(a, '%s/graph_fq_%d_dot.svg' % (directory, i), prog="dot")
+          
           i += 1
         except Exception as e:
           print e
           break
-
-  # import os
-  # dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
-  # for diry in dirs:
-  #   print diry
-  #   directory = os.path.join('data/dependency_graphs', diry)
-  #   with open('%s/200/conflicts.txt' % directory, 'w') as f:
-  #     writer = csv.writer(f)
-  #     writer.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
-  #     i = 0
-  #     while True:
-  #       try:
-  #         g, diG = csv_to_graph('%s/200/fc_%d.txt' % (directory, i)), csv_to_digraph('%s/200/dep_%d.txt' % (directory, i))
-  #         a, conflicts, remaining_num = superposition(diG, g)
-  #         graphviz_to_image(a, '%s/200/sup_%d.svg' % (directory, i))
-  #         print "Number of conflicts:", conflicts
-  #         writer.writerow([conflicts, len(g.edges()), len(diG.edges()), remaining_num])
-  #         i += 1
-  #       except Exception as e:
-  #         print e
-  #         break

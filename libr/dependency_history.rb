@@ -17,7 +17,10 @@ def dependency_history(source_dir, num_commits)
     temp_repo_dir = tmpdir + "/" + base_dir
     chdir_return(temp_repo_dir) do
       mg = MGit.new('.')
-      MCommits.new('../../../data/commits_all/%s.txt' % base_dir, num_commits, true).each_with_index do |commits, i|        
+      mc = MCommits.new('../../../data/commits_all/%s.txt' % base_dir, num_commits, true)
+      i = mc.num_blocks
+      mc.reverse_each do |commits|
+        i -= 1  
         # Generate Dependency Graph
         puts "Generating Dependency Graph"
         RubyFilesMatcher.new('.').dependency_graph_to_file("%s/dep_%d.txt" % [rel_output_dir, i])
@@ -43,14 +46,15 @@ def dependency_history(source_dir, num_commits)
   end
 end
 
+puts "Generating Commit Logs"
 Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
   puts dir
-  dependency_history("../temp/%s" % dir, 200) if dir == "resque" or dir == "sinatra" or dir == "turn"
+  repo_all_commits("../temp/%s" % dir, 'data/commits_all/%s.txt' % dir, 'data/commits_all/%s_detailed.txt' % dir)
 end
 
-# Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
-#   puts dir
-#   repo_all_commits("../temp/%s" % dir, 'data/commits_all/%s.txt' % dir) if dir == "rails"
-# end
-
-
+puts "Generating File Features"
+Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
+  puts dir
+  dependency_history("../temp/%s" % dir, 200)
+  all_itemset_occurrences("data/commits_all/%s.txt" % dir, "data/dependency_graphs/%s/200" % dir)
+end
