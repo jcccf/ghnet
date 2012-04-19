@@ -46,15 +46,15 @@ def dependency_history(source_dir, num_commits)
   end
 end
 
-puts "Generating Commit Logs"
-Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
-  puts dir
-  repo_all_commits("../temp/%s" % dir, 'data/commits_all/%s.txt' % dir, 'data/commits_all/%s_detailed.txt' % dir)
-end
+# puts "Generating Commit Logs"
+# Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
+#   puts dir
+#   repo_all_commits("../temp/%s" % dir, 'data/commits_all/%s.txt' % dir, 'data/commits_all/%s_detailed.txt' % dir)
+# end
 
 puts "Generating File Features"
 Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
   puts dir
-  dependency_history("../temp/%s" % dir, 200)
-  all_itemset_occurrences("data/commits_all/%s.txt" % dir, "data/dependency_graphs/%s/200" % dir)
+  # dependency_history("../temp/%s" % dir, 200)
+  all_itemset_occurrences("data/commits_all/%s_detailed.txt" % dir, "data/dependency_graphs/%s/200" % dir)
 end

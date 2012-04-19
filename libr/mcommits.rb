@@ -1,5 +1,6 @@
 require 'json'
 require 'set'
+require 'iconv'
 require_relative 'mnode'
 require_relative 'mfile'
 
@@ -109,15 +110,21 @@ def itemset_occurrences(commits, itemset, filename)
   item_occurrences = {}
   itemset.each { |item| item_occurrences[item] = [] }
   pathlists = commits.map { |commit| Set.new(commit['paths']) }
-  x = []
-  pathlists.each do |pathlist|
-    x << ((itemset_set.subset? pathlist) ? 1 : 0)
+  x, xcommits = [], []
+  pathlists.each_with_index do |pathlist, i|
+    if itemset_set.subset? pathlist
+      x << 1
+      paths = Iconv.iconv('utf-8', 'iso8859-1', *commits[i]['paths'])
+      xcommits << { :sha => commits[i]['sha'], :message => Iconv.iconv('utf-8', 'iso8859-1', commits[i]['message']).first, :pathlist => paths, :related_files => commits[i]['related_files'] }
+    else
+      x << 0
+    end
     itemset.each do |item|
       item_occurrences[item] << ((pathlist.include? item) ? 1 : 0)
     end
   end
   File.open(filename, 'w') do |f|
-    f.write(JSON.generate({ :itemset => itemset, :occurrences => x, :items => item_occurrences }))
+    f.write(JSON.generate({ :itemset => itemset, :occurrences => x, :items => item_occurrences, :commits => xcommits }))
   end
 end
 
