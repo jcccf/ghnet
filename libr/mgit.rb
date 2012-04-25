@@ -3,9 +3,14 @@ require 'grit'
 require 'json'
 require 'pathname'
 require 'iconv'
+require 'fileutils'
 require_relative 'mnode'
 require_relative 'massociation'
 require_relative 'mfile'
+require_relative 'mdirectorystructure'
+require_relative 'mfilesmatcher'
+require_relative 'mcommits'
+require_relative 'mi18n'
 
 class MGit
   
@@ -57,12 +62,40 @@ class MGit
   end
 end
 
-def parse_name(author_string)
-  author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
-  # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
-rescue
-  p author_string
-  "UNPARSEABLE_AUTHOR"
+def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
+  sdir = Pathname.new(Dir.pwd) + Pathname.new(structures_dir)
+  base_dir = Pathname.new(repo_dir).basename.to_s
+  FileUtils.mkdir_p(sdir + "dir")
+  FileUtils.mkdir_p(sdir + "dep")
+  i = MCommits.new(commits_file).all_commits.size # Reverse order
+  dir_keyencoder, dep_keyencoder = KeyEncoder.new, KeyEncoder.new
+  make_temp_dir do |tmpdir|
+    # Copy repo to temp folder
+    FileUtils.cp_r repo_dir, tmpdir
+    temp_repo_dir = tmpdir + "/" + base_dir
+    
+    chdir_return(temp_repo_dir) do
+      keep_going = true
+      while keep_going do
+        i -= 1
+        # Generate Directory Structure Graph
+        puts "Generating Dir Structure Graph"
+        directory_graph(".", "%s/%d.txt" % [(sdir+"dir").relative_path_from(Pathname.new Dir.pwd).to_s, i], dir_keyencoder)
+
+        # Generate Dependency Graph
+        puts "Generating Dependency Graph"
+        RubyFilesMatcher.new('.').dependency_graph_to_file("%s/%d.txt" % [(sdir+"dep").relative_path_from(Pathname.new Dir.pwd).to_s, i], dep_keyencoder)
+
+        puts "Rewinding..."
+        stdin, stdout, stderr = Open3.popen3("git reset --hard HEAD~1")
+        keep_going = false if stderr.readlines.length > 0 # While not getting "...unknown revision or path not in the working tree..."
+      end
+    end
+    
+  end
+  raise "Number of Commits Don't Match" if i != 0
+  dir_keyencoder.to_file(sdir + "dir_key.txt")
+  dep_keyencoder.to_file(sdir + "dep_key.txt")
 end
 
 def repo_all_commits(repo_dir, filename, detailed_filename)
@@ -82,11 +115,11 @@ def repo_all_commits(repo_dir, filename, detailed_filename)
       # Read 1 commit
       i = 0
       mg.files_commits(1) do |commit, paths, related|
-        commit_arr = {:sha => commit.sha, :author => commit.author_string.to_json_raw_object, :message => commit.message.to_json_raw_object}
-        commit_arr["paths"] = paths.map {|p| p.to_json_raw_object}
-        commit_arr["related_files"] = related.map { |r1, r2| [r1.to_json_raw_object, r2.to_json_raw_object]}
+        commit_arr = {:sha => commit.sha, :author => commit.author_string.to_utf8, :message => commit.message.to_utf8, :date => commit.date}
+        commit_arr["paths"] = paths.map { |p| p.to_utf8 }
+        commit_arr["related_files"] = related.map { |r1, r2| [r1.to_utf8, r2.to_utf8]}
         stat_files = {}
-        commit.stats.files.each { |f,add,del,tot| stat_files[f.to_json_raw_object] = [add, del, tot] }
+        commit.stats.files.each { |f,add,del,tot| stat_files[f.to_utf8] = [add, del, tot] }
         commit_arr["stats"] = { :additions => commit.stats.additions, :deletions => commit.stats.deletions, :files => stat_files }
         commits << commit_arr
         i += 1
@@ -114,7 +147,10 @@ def repo_all_commits(repo_dir, filename, detailed_filename)
 end
 
 if __FILE__ == $0
-  repo_all_commits('../temp/compass', 'compasscommits.txt', 'compasscommits_detailed.txt')
+  # repo_all_commits('../temp/rails', 'railscommits.txt', 'railscommits_detailed.txt')
+  # repo_all_commits('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/commits_all/cloud-crowd_detailed.txt')
+  repo_all_commits_structures('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/structures_all')
+  
   # mg = MGit.new '../rails'
   # mg.authors_files_graph(50, "auth.txt")
   # mg.commits_all(1000) do |commits|

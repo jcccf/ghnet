@@ -1,3 +1,4 @@
+# encoding: utf-8
 require 'json'
 require 'set'
 require 'iconv'
@@ -49,6 +50,25 @@ class MCommits
   
 end
 
+def parse_name(author_string)
+  author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
+#   # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
+# rescue
+#   Iconv.conv('utf-8', 'iso8859-1', author_string).match(/([\p{Word}\(\)\. \'\?\=]+) <([a-zA-Z0-9_@=\.\+\-\(\) ]+)>\w*/)[1]
+end
+
+def author_frequencies(commits, filename)
+  # Get author frequencies
+  authors = Hash.new(0)
+  commits.each do |commit|
+    authors[parse_name(commit['author'])] += 1
+  end
+  # Write authors to JSON
+  File.open(filename, 'w') do |f|
+    f.write(JSON.generate(authors))
+  end
+end
+
 # Generate graph where nodes are files, edges are commits
 def files_commits_graph(commits, filename)
   g = MGraph.new
@@ -84,10 +104,7 @@ end
 # Edge weight is the frequency of that itemset
 def file_commits_itemsets(commits, filename, json_filename)
   pathlists = commits.map { |commit| commit['paths'] }.compact
-  itemsets = nil
-  chdir_return('../../..') do
-    itemsets = frequent_itemsets(pathlists, 3, 2)
-  end
+  itemsets = frequent_itemsets(pathlists, 3, 2)
   
   # Write Itemsets to JSON
   File.open(json_filename, 'w') do |f|
@@ -114,8 +131,8 @@ def itemset_occurrences(commits, itemset, filename)
   pathlists.each_with_index do |pathlist, i|
     if itemset_set.subset? pathlist
       x << 1
-      paths = Iconv.iconv('utf-8', 'iso8859-1', *commits[i]['paths'])
-      xcommits << { :sha => commits[i]['sha'], :message => Iconv.iconv('utf-8', 'iso8859-1', commits[i]['message']).first, :pathlist => paths, :related_files => commits[i]['related_files'] }
+      paths = commits[i]['paths'] # Iconv.iconv('utf-8', 'iso8859-1', *commits[i]['paths'])
+      xcommits << { :sha => commits[i]['sha'], :message => commits[i]['message'], :pathlist => paths, :related_files => commits[i]['related_files'] }
     else
       x << 0
     end
@@ -179,5 +196,10 @@ if __FILE__ == $0
   # end
   # itemset_occurrences(all_commits, ["cloud-crowd.gemspec", "lib/cloud-crowd.rb"], "test.txt")
   
-  all_itemset_occurrences('data/commits_all/cloud-crowd.txt', "data/dependency_graphs/cloud-crowd/200")
+  # all_itemset_occurrences('data/all_commits/cloud-crowd.txt', "data/dependency_graphs/cloud-crowd/200")
+  
+  mc = MCommits.new('data/all_commits/diaspora.txt', 200, true)
+  mc.each do |commits|
+    author_frequencies(commits, 'authors.txt')
+  end
 end

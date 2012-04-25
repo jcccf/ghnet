@@ -5,20 +5,18 @@ require 'pathname'
 require 'set'
 
 # Returns the directory structure of this directory as a graph and output it to filename
-def directory_graph(directory, filename)
+def directory_graph(directory, filename, keyencoder = nil)
   g = MGraph.new
   chdir_return(directory) do
     Dir.glob("**/*").each do |f|
       # Link each file to its parent
       parent_dir = Pathname.new(f).parent.to_s
-      g[f] ||= Node.new(f)
-      g[parent_dir] ||= Node.new(f)
-      g[parent_dir].edge_to(g[f])
+      g.dedge(parent_dir, f)
     end
   end
-  g.to_file(filename)
+  g.to_file(filename, keyencoder)
 end
 
 if __FILE__ == $0
-  
+  directory_graph("lib", "test.txt")
 end

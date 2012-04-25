@@ -50,16 +50,14 @@ class FilesMatcher
     Set.new(probable_dependencies(filename).find_all {|d| d.any? }.map {|d| d.first }).to_a
   end
   
-  def dependency_graph_to_file(filename)
+  def dependency_graph_to_file(filename, keyencoder = nil)
     nl = MGraph.new
     @filelist.each do |filename,v|
-      nl[filename] ||= Node.new(filename)
       dependencies(filename).each do |dependent_file|
-        nl[dependent_file] ||= Node.new(dependent_file)
-        nl[filename].edge_to(nl[dependent_file])
+        nl.dedge(filename, dependent_file)
       end
     end
-    nl.to_file(filename)
+    nl.to_file(filename, keyencoder)
   end
 
 end

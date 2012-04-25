@@ -8,7 +8,6 @@ require 'open3'
 def frequent_itemsets(stringlists, min_support="10%", min_itemset_size=2)
   min_support = (min_support.to_s.include? "%") ? min_support.to_s.gsub("%", "") : "-"+min_support.to_s # Format properly for FPgrowth
   itemsets = []
-  
   make_temp_dir do |tmpdir| # Create a temporary working directory
     # Generate input file
     File.open(tmpdir+'/in.txt', 'w') do |f|

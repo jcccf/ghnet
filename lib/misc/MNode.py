@@ -68,6 +68,7 @@ def format_graphviz_labels(A):
   # A.node_attr['width']='0.15'
   # A.node_attr['height']='0.15'
   # A.node_attr['fixedsize']='true'
+  A.edge_attr['color'] = 'blue'
   A.node_attr['fontsize']='9'
   A.node_attr['forcelabels']='true'
   A.node_attr['style']='filled'
@@ -93,7 +94,7 @@ def graph_to_graphviz(G, labels=False):
     A.add_edge(n1, n2, style="setlinewidth(1)", color=get_color(data['weight'], "green"), arrowsize=0.0)
   return A
 
-def superposition(diG, G, remove_nodes=True):
+def superposition(diG, G, remove_nodes=True, labels=False):
   '''Superimpose the undirected graph G on the digraph diG,
     removing nodes in diG that are not in G if required,
     and highlighting edges in G in red where a path already exists
@@ -107,13 +108,16 @@ def superposition(diG, G, remove_nodes=True):
           for suc in diG.successors_iter(n):
             diG.add_edge(pre, suc)
         diG.remove_node(n)
-    remaining_num = len(diG.edges())
-    print "Remaining edges after removal: %d" % remaining_num
-    
+  remaining_num = len(diG.edges())
+  print "Remaining edges (after removal): %d" % remaining_num
+
   # Use MultiDiGraph so that conflicts can be shown with multiple paths from 1 node to another
   diG = nx.MultiDiGraph(diG) 
   A = nx.to_agraph(diG)
-  format_graphviz(A)
+  if labels:
+    format_graphviz_labels(A)
+  else:
+    format_graphviz(A)
   conflicts = [] # keep a list of the number of "conflicts" (path exists)
 
   # Add G to diG without arrows since G is undirected,
@@ -132,12 +136,15 @@ if __name__ == '__main__':
   import os
   dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
   for diry in dirs:
+    if diry != 'cloud-crowd':
+      continue
     print diry
     directory = os.path.join('data/dependency_graphs', diry, str(n))
-    with open('%s/all_conflicts_itemsets.txt' % directory, 'w') as f, open('%s/all_conflicts.txt' % directory, 'w') as f2:
-      writer, writer2 = csv.writer(f), csv.writer(f2)
+    with open('%s/all_conflicts_itemsets.txt' % directory, 'w') as f, open('%s/all_conflicts.txt' % directory, 'w') as f2, open('%s/all_conflicts_itemsets_dir.txt' % directory, 'w') as f3:
+      writer, writer2, writer3 = csv.writer(f), csv.writer(f2), csv.writer(f3)
       writer.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
       writer2.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
+      writer3.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
       i = 0
       while True:
         try:
@@ -168,6 +175,22 @@ if __name__ == '__main__':
           num_conflicts = sum([x[2] for x in conflicts])
           print "Regular conflicts:", num_conflicts
           writer2.writerow([num_conflicts, len(g.edges()), len(diG.edges()), remaining_num])
+          
+          # Itemset Conflicts on Dir
+          g, diG = csv_to_graph('%s/fq_%d.txt' % (directory, i)), csv_to_digraph('%s/dir_%d.txt' % (directory, i))
+          a, conflicts, remaining_num = superposition(diG, g, False)
+          graphviz_to_image(a, '%s/sup_fqdir_%d.svg' % (directory, i))
+          a, conflicts, remaining_num = superposition(diG, g, False, True)
+          graphviz_to_image(a, '%s/sup_fqdir_%d_dot.svg' % (directory, i), prog='dot')
+          # Write out conflicted edges to CSV in descending # of conflicts
+          with open('%s/conflicts_itemsets_dir_%d.txt' % (directory, i), 'w') as f:
+            iswriter = csv.writer(f)
+            iswriter.writerow(["n1", "n2", "conflicts"])
+            for x in sorted(conflicts, key=lambda x: -x[2]):
+              iswriter.writerow(x)
+          num_conflicts = sum([x[2] for x in conflicts])
+          print "Itemset dir conflicts:", num_conflicts
+          writer3.writerow([num_conflicts, len(g.edges()), len(diG.edges()), remaining_num])
           
           # Generate Author Collaboration Graph
           g = csv_to_graph('%s/au_%d.txt' % (directory, i))
