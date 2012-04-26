@@ -14,6 +14,10 @@ class KeyEncoder
     end
   end
   
+  def key_count
+    @hash.size
+  end
+  
   def encode(string)
     if @hash.include? string
       @hash[string]
@@ -24,7 +28,7 @@ class KeyEncoder
   end
   
   def decode(inty)
-    @inv_hash[inty]
+    @inv_hash[inty.to_i]
   end
   
   def to_file(filename)

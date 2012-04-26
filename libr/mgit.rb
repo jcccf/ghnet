@@ -62,13 +62,26 @@ class MGit
   end
 end
 
+# Generate an Author > Id Hash
+def repo_all_commits_authors(repo_dir, commits_file, structures_dir)
+  puts "Generating Authors Hash"
+  base_dir = Pathname.new(repo_dir).basename.to_s
+  mc = MCommits.new(commits_file)
+  auth_kenc = KeyEncoder.new
+  mc.all_commits.each do |commit|
+    auth_kenc.encode(parse_name(commit['author']))
+  end
+  auth_kenc.to_file(Pathname.new(structures_dir) + base_dir + "auth_key.txt")
+end
+
+# Generate Directory and Dependency Structures and a File > Id Hash
 def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
   sdir = Pathname.new(Dir.pwd) + Pathname.new(structures_dir)
   base_dir = Pathname.new(repo_dir).basename.to_s
   FileUtils.mkdir_p(sdir + "dir")
   FileUtils.mkdir_p(sdir + "dep")
   i = MCommits.new(commits_file).all_commits.size # Reverse order
-  dir_keyencoder, dep_keyencoder = KeyEncoder.new, KeyEncoder.new
+  file_kenc = KeyEncoder.new
   make_temp_dir do |tmpdir|
     # Copy repo to temp folder
     FileUtils.cp_r repo_dir, tmpdir
@@ -80,11 +93,15 @@ def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
         i -= 1
         # Generate Directory Structure Graph
         puts "Generating Dir Structure Graph"
-        directory_graph(".", "%s/%d.txt" % [(sdir+"dir").relative_path_from(Pathname.new Dir.pwd).to_s, i], dir_keyencoder)
+        directory_graph(".", "%s/%d.txt" % [(sdir+"dir").relative_path_from(Pathname.new Dir.pwd).to_s, i], file_kenc)
+
+        key_count = file_kenc.key_count
 
         # Generate Dependency Graph
         puts "Generating Dependency Graph"
-        RubyFilesMatcher.new('.').dependency_graph_to_file("%s/%d.txt" % [(sdir+"dep").relative_path_from(Pathname.new Dir.pwd).to_s, i], dep_keyencoder)
+        RubyFilesMatcher.new('.').dependency_graph_to_file("%s/%d.txt" % [(sdir+"dep").relative_path_from(Pathname.new Dir.pwd).to_s, i], file_kenc)
+        
+        raise "Dependency Graph is not supposed to generate more keys!" if key_count != file_kenc.key_count
 
         puts "Rewinding..."
         stdin, stdout, stderr = Open3.popen3("git reset --hard HEAD~1")
@@ -94,8 +111,7 @@ def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
     
   end
   raise "Number of Commits Don't Match" if i != 0
-  dir_keyencoder.to_file(sdir + "dir_key.txt")
-  dep_keyencoder.to_file(sdir + "dep_key.txt")
+  file_kenc.to_file(sdir + "file_key.txt")
 end
 
 def repo_all_commits(repo_dir, filename, detailed_filename)
@@ -130,7 +146,10 @@ def repo_all_commits(repo_dir, filename, detailed_filename)
       chdir_return(temp_repo_dir) do
         puts "Rewinding..."
         stdin, stdout, stderr = Open3.popen3("git reset --hard HEAD~1")
-        keep_going = false if stderr.readlines.length > 0 # While not getting "...unknown revision or path not in the working tree..."
+        a = stderr.readlines
+        if a.length > 0 and /unknown revision or path/ =~ a[0]  # While not getting "...unknown revision or path not in the working tree..."
+          keep_going = false
+        end
       end
     end
   end
@@ -149,7 +168,8 @@ end
 if __FILE__ == $0
   # repo_all_commits('../temp/rails', 'railscommits.txt', 'railscommits_detailed.txt')
   # repo_all_commits('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/commits_all/cloud-crowd_detailed.txt')
-  repo_all_commits_structures('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/structures_all')
+  # repo_all_commits_structures('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/all_structures')
+  repo_all_commits_authors('../temp/cloud-crowd', 'data/commits_all/cloud-crowd.txt', 'data/all_structures')
   
   # mg = MGit.new '../rails'
   # mg.authors_files_graph(50, "auth.txt")

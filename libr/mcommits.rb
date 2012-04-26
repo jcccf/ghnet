@@ -2,6 +2,7 @@
 require 'json'
 require 'set'
 require 'iconv'
+require 'time'
 require_relative 'mnode'
 require_relative 'mfile'
 
@@ -27,7 +28,39 @@ class MCommits
     end
     if @yield_remainder && remainder > 0
       start_index, end_index = n*@commits_per_block, n*@commits_per_block + remainder - 1
-      yield @commits[start_index, end_index]
+      yield @commits[start_index..end_index]
+    end
+  end
+  
+  def each_sliding_window(increment=10)
+    if @commits.size - @commits_per_block <= 0
+      yield @commits
+    else
+      n = (@commits.size - @commits_per_block) / increment
+      remainder = (@commits.size - @commits_per_block) - n * increment
+      (n+1).times do |i|
+        start_index, end_index = i*increment, i*increment + @commits_per_block - 1
+        yield @commits[start_index..end_index]
+      end
+      if @yield_remainder && remainder > 0
+        start_index, end_index = (n+1)*increment, n*increment + @commits_per_block + remainder - 1
+        yield @commits[start_index..end_index]
+      end
+    end
+  end
+  
+  def each_date(timespan)
+    last_date, start_index, end_index = Time.parse(@commits[0]['date']), 0, 0
+    i = 1
+    while i < @commits.size
+      if Time.parse(@commits[i]['date']) - last_date > timespan
+        yield @commits[start_index..i-1]
+        start_index = i
+      end
+      i += 1
+    end
+    if start_index < @commits.size
+      yield @commits[start_index..@commits.size-1]
     end
   end
   
@@ -51,17 +84,19 @@ class MCommits
 end
 
 def parse_name(author_string)
+  # author_string.match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
   author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
-#   # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
-# rescue
-#   Iconv.conv('utf-8', 'iso8859-1', author_string).match(/([\p{Word}\(\)\. \'\?\=]+) <([a-zA-Z0-9_@=\.\+\-\(\) ]+)>\w*/)[1]
+  # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
+rescue
+  Iconv.conv('utf-8', 'iso8859-1', author_string).match(/([\p{Word}\(\)\. \'\?\=]+) <([a-zA-Z0-9_@=\.\+\-\(\) ]+)>\w*/)[1]
 end
 
-def author_frequencies(commits, filename)
+# Write a hash of authors => # of commits to a file
+def author_frequencies(commits, filename, kenc)
   # Get author frequencies
   authors = Hash.new(0)
   commits.each do |commit|
-    authors[parse_name(commit['author'])] += 1
+    authors[kenc.encode(parse_name(commit['author']))] += 1
   end
   # Write authors to JSON
   File.open(filename, 'w') do |f|
@@ -70,19 +105,19 @@ def author_frequencies(commits, filename)
 end
 
 # Generate graph where nodes are files, edges are commits
-def files_commits_graph(commits, filename)
+def files_commits_graph(commits, filename, kenc=nil)
   g = MGraph.new
   commits.each do |commit|
     commit['paths'].combination(2).each do |i, j|
       g.edge_inc(i, j)
     end
   end
-  g.to_file(filename)
+  g.to_file(filename, kenc)
 end
 
 # Generate graph where nodes are authors, edges are files (modified in commits by the author)
 # Weights are # of common files between authors
-def authors_files_graph(commits, filename)
+def authors_files_graph(commits, filename, kenc=nil)
   pathlist = {}
   commits.each do |commit|
     auth = parse_name(commit['author'])
@@ -97,14 +132,21 @@ def authors_files_graph(commits, filename)
       g.edge_inc(i, j)
     end
   end
-  g.to_file(filename)
+  g.to_file(filename, kenc)
 end
 
 # Generate graph where cliques are frequent files commonly modified together (itemsets)
 # Edge weight is the frequency of that itemset
-def file_commits_itemsets(commits, filename, json_filename)
+def file_commits_itemsets(commits, filename, json_filename, kenc=nil)
   pathlists = commits.map { |commit| commit['paths'] }.compact
   itemsets = frequent_itemsets(pathlists, 3, 2)
+  
+  unless kenc.nil?
+    itemsets = itemsets.map do |itemset, count|
+      new_itemset = itemset.map { |item| kenc.encode(item) }
+      [new_itemset, count]
+    end
+  end
   
   # Write Itemsets to JSON
   File.open(json_filename, 'w') do |f|
@@ -177,19 +219,7 @@ def all_itemset_occurrences(commits_file, directory, threshold=0.1)
   end
 end
 
-if __FILE__ == $0
-  # mc = MCommits.new('data/commits_all/diaspora.txt', 200, true)  
-  # a = Set.new
-  # mc.each do |commits|
-  #   puts commits.size
-  #   commits.each do |commit|
-  #     a << commit['sha']
-  #   end
-  #   # files_commits_graph(commits, 'test.txt')
-  # end
-  # puts "Total Set Size: %d" % a.size
-  # puts mc.all_commits
-  
+if __FILE__ == $0  
   # all_commits = []
   # mc.each do |commits|
   #   all_commits += commits
@@ -198,8 +228,8 @@ if __FILE__ == $0
   
   # all_itemset_occurrences('data/all_commits/cloud-crowd.txt', "data/dependency_graphs/cloud-crowd/200")
   
-  mc = MCommits.new('data/all_commits/diaspora.txt', 200, true)
-  mc.each do |commits|
-    author_frequencies(commits, 'authors.txt')
-  end
+  # mc = MCommits.new('data/all_commits/diaspora.txt', 200, true)
+  # mc.each do |commits|
+  #   author_frequencies(commits, 'authors.txt')
+  # end
 end

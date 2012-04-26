@@ -33,7 +33,7 @@ class MGraph
     end
   
     def to_s
-      return @label
+      return @label.to_s
     end
   
     include Comparable
@@ -99,9 +99,9 @@ class MGraph
       csv << ['n1', 'dir', 'n2', 'w']
       nodes.each do |k, v|
         if keyencoder.nil?
-          v.undirs.each { |neighbor,w| csv << [v.label, "<>", neighbor, w] if neighbor >= v }
+          v.undirs.each { |neighbor,w| csv << [v, "<>", neighbor, w] if neighbor >= v }
           # v.ins.each { |neighbor,w| csv << [v.label, "<-", neighbor, w] }
-          v.outs.each { |neighbor,w| csv << [v.label, "->", neighbor, w] }
+          v.outs.each { |neighbor,w| csv << [v, "->", neighbor, w] }
         else
           v.undirs.each { |neighbor,w| csv << [keyencoder.encode(v.label), "<>", keyencoder.encode(neighbor.label), w] if neighbor >= v }
           # v.ins.each { |neighbor,w| csv << [keyencoder.encode(v.label), "<-", keyencoder.encode(neighbor.label), w] }

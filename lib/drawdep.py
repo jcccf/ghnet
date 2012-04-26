@@ -2,7 +2,7 @@ from misc import *
 from plot import *
 import os, csv, glob, json
 
-n = 200
+n = "200_10"
 
 dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
 
@@ -46,22 +46,35 @@ for diry in dirs:
   #     xy_list = [(i,float(x)) for i, x in enumerate(iset['occurrences'])]
   #     other_xy_lists = [[(i, float(x)) for i, x in enumerate(xs)] for xs in iset['items'].itervalues()]
   #     DistributionPlot.scatter_plot(filename.rsplit(".", 1)[0], xy_list, other_xy_lists=other_xy_lists, sliding_window=10, title=str(iset['itemset']))
-  
-  cs, cs_fracs = conflict_graph(directory, "all_conflicts")
-  cs_all.add(cs) # Generate stuff for average
-  cs_fracs_all.add(cs_fracs)
-  
-  cs, cs_fracs = conflict_graph(directory, "all_conflicts_itemsets")
-  cs_all2.add(cs) # Generate stuff for average
-  cs_fracs_all2.add(cs_fracs)
-  
-BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all", [cs_all.avg(), cs_fracs_all.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
-BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all_itemsets", [cs_all2.avg(), cs_fracs_all2.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
 
-# Convert SVGs to PNGs
-import subprocess
-for diry in dirs:
-  directory = os.path.join('data/dependency_graphs', diry, str(n))
-  print directory
-  p = subprocess.Popen("mogrify -density 144 -format png %s/*.svg" % directory,shell=True)
-  out,err = p.communicate()
+  # # Generate # of Conflicts
+  # cs, cs_fracs = conflict_graph(directory, "all_conflicts")
+  # cs_all.add(cs) # Generate stuff for average
+  # cs_fracs_all.add(cs_fracs)
+  # 
+  # cs, cs_fracs = conflict_graph(directory, "all_conflicts_itemsets")
+  # cs_all2.add(cs) # Generate stuff for average
+  # cs_fracs_all2.add(cs_fracs)
+  
+  # Generate Unique Authors and # of Frequent Itemsets
+  authors, frequent_edges = {}, {}
+  for filename in glob.iglob(directory+"/af_*.txt"):
+    i = int(filename.rsplit("af_", 1)[1].split(".")[0])
+    with open(filename, 'r') as f:
+      af = json.loads(f.read())
+      authors[i] = len(af)
+    g = MNode.csv_to_graph(directory+"/fq_%d.txt" % i)
+    frequent_edges[i] = len(g.edges())
+  print authors, frequent_edges
+  BasicPlot.plot_twoscales(directory+"/auth_fq", [authors, frequent_edges], labels=["Authors", "# of Frequent Itemset Edges"])
+  
+# BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all", [cs_all.avg(), cs_fracs_all.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
+# BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all_itemsets", [cs_all2.avg(), cs_fracs_all2.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
+
+# # Convert SVGs to PNGs
+# import subprocess
+# for diry in dirs:
+#   directory = os.path.join('data/dependency_graphs', diry, str(n))
+#   print directory
+#   p = subprocess.Popen("mogrify -density 144 -format png %s/*.svg" % directory,shell=True)
+#   out,err = p.communicate()
