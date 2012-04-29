@@ -85,7 +85,7 @@ end
 
 def parse_name(author_string)
   # author_string.match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
-  author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
+  author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?\,]+) <([a-zA-Z0-9_@\.\,\+\-\(\) ]+)>\w*/)[1]
   # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
 rescue
   Iconv.conv('utf-8', 'iso8859-1', author_string).match(/([\p{Word}\(\)\. \'\?\=]+) <([a-zA-Z0-9_@=\.\+\-\(\) ]+)>\w*/)[1]

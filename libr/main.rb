@@ -43,7 +43,7 @@ def dependency_history(source_dir, num_commits, sliding_window=False, sliding_wi
   output_dir = "data/dependency_graphs/%s/%s" % [base_dir, n]
   puts output_dir
   FileUtils.mkdir_p output_dir
-  mc = MCommits.new('data/commits_all/%s.txt' % base_dir, num_commits, true)
+  mc = MCommits.new('data/all_commits/%s.txt' % base_dir, num_commits, true)
   file_kenc, auth_kenc = KeyEncoder.new('data/all_structures/%s/file_key.txt' % base_dir), KeyEncoder.new('data/all_structures/%s/auth_key.txt' % base_dir)
   if sliding_window
     i, commit_index = 0, num_commits-sliding_window_increment-1
@@ -77,16 +77,16 @@ if __FILE__ == $0
     puts "Generating commit logs and structure history"
     Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
       puts dir
-      # repo_all_commits("../temp/%s" % dir, 'data/all_commits/%s.txt' % dir, 'data/all_commits/%s_detailed.txt' % dir) unless File.exist? 'data/all_commits/%s.txt' % dir
+      repo_all_commits("../temp/%s" % dir, 'data/all_commits/%s.txt' % dir, 'data/all_commits/%s_detailed.txt' % dir) unless File.exist? 'data/all_commits/%s.txt' % dir
       repo_all_commits_structures('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/dep_key.txt' % dir
-      repo_all_commits_authors('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/dep_key.txt' % dir
+      repo_all_commits_authors('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/auth_key.txt' % dir
     end
   when :features
     puts "Generating file features"
     puts "...with sliding window" if sliding_window
     Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
       puts dir
-      dependency_history("../temp/%s" % dir, 200, sliding_window) if dir == 'cloud-crowd'
+      dependency_history("../temp/%s" % dir, 200, sliding_window)
       # all_itemset_occurrences("data/all_commits/%s_detailed.txt" % dir, "data/dependency_graphs/%s/200" % dir)
     end
   end

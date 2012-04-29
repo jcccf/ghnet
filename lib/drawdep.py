@@ -2,9 +2,15 @@ from misc import *
 from plot import *
 import os, csv, glob, json
 
-n = "200_10"
+n = "200"
 
 dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
+
+def make_directories(directory):
+  for d in ['auth_fq']:
+    out_dir = os.path.join(directory, d)
+    if not os.path.exists(out_dir):
+      os.makedirs(out_dir)
 
 class Aggregator:
   def __init__(self):
@@ -28,15 +34,35 @@ def conflict_graph(directory, conflict_filename):
       cdict[i] = float(row['conflicts'])
       cdict_frac[i] = float(row['conflicts'])/float(row['dig_remaining']) if float(row['dig_remaining']) > 0 else 0
       i += 1
-  BasicPlot.plot_twoscales("%s/%s" % (directory, conflict_filename), [cdict, cdict_frac], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps']) 
+  if len(cdict) > 0:
+    BasicPlot.plot_twoscales("%s/%s" % (directory, conflict_filename), [cdict, cdict_frac], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps']) 
+  else:
+    print "No data"
   return (cdict, cdict_frac)
 
-cs_all, cs_fracs_all = Aggregator(), Aggregator()
-cs_all2, cs_fracs_all2 = Aggregator(), Aggregator()
+class ConflictGraphAggregator:
+  def __init__(self, conflict_name='fq', base_name='dir'):
+    self.conflict_name = conflict_name
+    self.base_name = base_name
+    self.cs_all = Aggregator()
+    self.cs_fracs_all = Aggregator()
+    
+  def generate_and_add(self, directory):
+    # Generate # of Conflicts
+    cs, cs_fracs = conflict_graph(os.path.join(directory, "%s_%s" % (self.conflict_name, self.base_name)), "all_conflicts_%s_%s" % (self.conflict_name, self.base_name))
+    self.cs_all.add(cs) # Generate stuff for average
+    self.cs_fracs_all.add(cs_fracs)
+    
+  def plot_agg(self):
+    BasicPlot.plot_twoscales("data/dependency_graphs/all_conflicts_%s_%s" % (self.conflict_name, self.base_name), [self.cs_all.avg(), self.cs_fracs_all.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
 
+fqdir = ConflictGraphAggregator('fq', 'dir')
+fqdep = ConflictGraphAggregator('fq', 'dep')
+fcdep = ConflictGraphAggregator('fc', 'dep')
 for diry in dirs:
   directory = os.path.join('data/dependency_graphs', diry, str(n))
   print directory
+  make_directories(directory)
   
   # # Generate Graphs for Itemset Occurrences
   # for filename in glob.iglob(directory+'/itemset_occurrences/*.txt'):
@@ -47,14 +73,10 @@ for diry in dirs:
   #     other_xy_lists = [[(i, float(x)) for i, x in enumerate(xs)] for xs in iset['items'].itervalues()]
   #     DistributionPlot.scatter_plot(filename.rsplit(".", 1)[0], xy_list, other_xy_lists=other_xy_lists, sliding_window=10, title=str(iset['itemset']))
 
-  # # Generate # of Conflicts
-  # cs, cs_fracs = conflict_graph(directory, "all_conflicts")
-  # cs_all.add(cs) # Generate stuff for average
-  # cs_fracs_all.add(cs_fracs)
-  # 
-  # cs, cs_fracs = conflict_graph(directory, "all_conflicts_itemsets")
-  # cs_all2.add(cs) # Generate stuff for average
-  # cs_fracs_all2.add(cs_fracs)
+  # Generate conflict graphs over time
+  fqdir.generate_and_add(directory)
+  fqdep.generate_and_add(directory)
+  fcdep.generate_and_add(directory)
   
   # Generate Unique Authors and # of Frequent Itemsets
   authors, frequent_edges = {}, {}
@@ -66,10 +88,11 @@ for diry in dirs:
     g = MNode.csv_to_graph(directory+"/fq_%d.txt" % i)
     frequent_edges[i] = len(g.edges())
   print authors, frequent_edges
-  BasicPlot.plot_twoscales(directory+"/auth_fq", [authors, frequent_edges], labels=["Authors", "# of Frequent Itemset Edges"])
+  BasicPlot.plot_twoscales(directory+"/auth_fq/auth_fq_%s_%s" % (diry str(n)), [authors, frequent_edges], labels=["Authors", "# of Frequent Itemset Edges"])
   
-# BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all", [cs_all.avg(), cs_fracs_all.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
-# BasicPlot.plot_twoscales("data/dependency_graphs/conflicts_all_itemsets", [cs_all2.avg(), cs_fracs_all2.avg()], xlabel='', ylabel='', title='', linetypes=['b','r','g','k'], labels=['Conflicts', 'Conflicts/Deps'])
+fqdir.plot_agg()
+fqdep.plot_agg()
+fcdep.plot_agg()
 
 # # Convert SVGs to PNGs
 # import subprocess

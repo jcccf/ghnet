@@ -69,9 +69,14 @@ def repo_all_commits_authors(repo_dir, commits_file, structures_dir)
   mc = MCommits.new(commits_file)
   auth_kenc = KeyEncoder.new
   mc.all_commits.each do |commit|
-    auth_kenc.encode(parse_name(commit['author']))
+    begin
+      auth_kenc.encode(parse_name(commit['author']))
+    rescue
+      puts commit['author']
+      raise "Hello"
+    end
   end
-  auth_kenc.to_file(Pathname.new(structures_dir) + base_dir + "auth_key.txt")
+  auth_kenc.to_file(Pathname.new(structures_dir) + "auth_key.txt")
 end
 
 # Generate Directory and Dependency Structures and a File > Id Hash
