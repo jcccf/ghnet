@@ -73,7 +73,7 @@ def repo_all_commits_authors(repo_dir, commits_file, structures_dir)
       auth_kenc.encode(parse_name(commit['author']))
     rescue
       puts commit['author']
-      raise "Hello"
+      puts parse_name(commit['author'])
     end
   end
   auth_kenc.to_file(Pathname.new(structures_dir) + "auth_key.txt")
@@ -85,6 +85,7 @@ def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
   base_dir = Pathname.new(repo_dir).basename.to_s
   FileUtils.mkdir_p(sdir + "dir")
   FileUtils.mkdir_p(sdir + "dep")
+  lang = detect_language(repo_dir) # Detect programming language  
   i = MCommits.new(commits_file).all_commits.size # Reverse order
   file_kenc = KeyEncoder.new
   make_temp_dir do |tmpdir|
@@ -102,11 +103,17 @@ def repo_all_commits_structures(repo_dir, commits_file, structures_dir)
 
         key_count = file_kenc.key_count
 
-        # Generate Dependency Graph
-        puts "Generating Dependency Graph"
-        RubyFilesMatcher.new('.').dependency_graph_to_file("%s/%d.txt" % [(sdir+"dep").relative_path_from(Pathname.new Dir.pwd).to_s, i], file_kenc)
-        
-        raise "Dependency Graph is not supposed to generate more keys!" if key_count != file_kenc.key_count
+        # Generate dependency graph if language is supported
+        unless lang.nil?
+          case lang
+          when :ruby
+            puts "Generating Dependency Graph"
+            RubyFilesMatcher.new('.').dependency_graph_to_file("%s/%d.txt" % [(sdir+"dep").relative_path_from(Pathname.new Dir.pwd).to_s, i], file_kenc)
+          else
+            puts "Unsupported Programming Language"
+          end
+          raise "Dependency Graph is not supposed to generate more keys!" if key_count != file_kenc.key_count
+        end
 
         puts "Rewinding..."
         stdin, stdout, stderr = Open3.popen3("git reset --hard HEAD~1")

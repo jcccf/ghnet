@@ -1,5 +1,6 @@
 # encoding=utf-8
 require_relative 'mnode'
+require_relative 'mfile'
 require 'pathname'
 require 'set'
 
@@ -110,6 +111,17 @@ class RubyFilesMatcher < FilesMatcher
     end
     matchys
   end
+end
+
+def detect_language(directory)
+  lengths = {}
+  chdir_return(directory) do
+    # Get lengths
+    lengths[:ruby] = Dir.glob("**/*.rb").size
+    lengths[:python] = Dir.glob("**/*.py").size
+  end
+  lang, len = lengths.max_by{ |k,v| v }
+  (len > 0) ? lang : nil
 end
 
 # rbm = RubyFilesMatcher.new '../rails'

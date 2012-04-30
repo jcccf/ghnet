@@ -86,7 +86,7 @@ def format_graphviz_labels(A):
   A.node_attr['fillcolor']='#bbbbbb'
   A.node_attr['fontname']='Helvetica'
   
-def filter_graph(g, threshold=0.1):
+def filter_graph(g, threshold=0.01):
   g2 = nx.Graph()
   edgys = [(n1, n2, data, float(data['weight'])) for n1, n2, data in g.edges_iter(data=True)]
   edgys = sorted(edgys, key=lambda x: -x[3])

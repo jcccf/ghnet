@@ -10,6 +10,15 @@ def colors(length):
     colors.append(c(1.*i/length))
   return colors
   
+def alt_smoothed_line(xy_list, sliding_window=10):
+  xs, ys = [], []
+  for x, y in xy_list:
+    y_many = [y2 for x2,y2 in xy_list if x-sliding_window/2 <= x2 <= x+sliding_window/2]
+    y_avg = sum(y_many)/len(y_many)
+    xs.append(x)
+    ys.append(y_avg)
+  return (xs, ys)
+  
 def smoothed_line(xy_list, sliding_window=10):
   xydict = {}
   xs, ys = zip(*xy_list)
@@ -58,6 +67,24 @@ def activity_plot(filename, lists, labels):
   fontP.set_size('small')
   ax.legend(loc='center left', bbox_to_anchor=(1, 0.5), prop=fontP)
   
+  plt.savefig('%s' % filename)
+
+def line_plots(filename, xy_lists, sliding_window=10, title=None):
+  plt.clf()
+  fig = plt.figure()
+  fig.set_size_inches(20,10)
+  ax = plt.subplot(111)
+  
+  # Plot smoothed lines for other lists
+  ccolors = colors(len(xy_lists))
+  for i, listy in enumerate(xy_lists):
+    oxs2, oys2 = alt_smoothed_line(listy, sliding_window = sliding_window)
+    ax.plot(oxs2, oys2, color=ccolors[i])
+    xs, ys = zip(*listy)
+    ax.scatter(xs, ys, marker='.', color=ccolors[i])
+  if title:
+    fig.text(.5, .95, title, horizontalalignment='center')
+
   plt.savefig('%s' % filename)
 
 def scatter_plot(filename, xy_list, other_xy_lists=[], sliding_window=10, title=None):

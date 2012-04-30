@@ -73,21 +73,22 @@ if __FILE__ == $0
   end.parse!
   
   case action
-  when :generate
+  when :generate # Step 1
     puts "Generating commit logs and structure history"
     Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
       puts dir
       repo_all_commits("../temp/%s" % dir, 'data/all_commits/%s.txt' % dir, 'data/all_commits/%s_detailed.txt' % dir) unless File.exist? 'data/all_commits/%s.txt' % dir
-      repo_all_commits_structures('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/dep_key.txt' % dir
+      repo_all_commits_structures('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/file_key.txt' % dir
       repo_all_commits_authors('../temp/%s' % dir, 'data/all_commits/%s.txt' % dir, 'data/all_structures/%s' % dir) unless File.exist? 'data/all_structures/%s/auth_key.txt' % dir
     end
-  when :features
+  when :features # Step 2
     puts "Generating file features"
     puts "...with sliding window" if sliding_window
     Dir.entries('../temp').find_all { |f| File.directory?('../temp/'+f) && f != '.' && f != '..' }.each do |dir|
       puts dir
-      dependency_history("../temp/%s" % dir, 200, sliding_window)
-      # all_itemset_occurrences("data/all_commits/%s_detailed.txt" % dir, "data/dependency_graphs/%s/200" % dir)
+      dir_num = sliding_window ? "200_10" : "200"
+      dependency_history("../temp/%s" % dir, 200, sliding_window) unless File.exist? 'data/dependency_graphs/%s/%s/af_0.txt' % [dir, dir_num]
+      all_itemset_occurrences("data/all_commits/%s_detailed.txt" % dir, "data/dependency_graphs/%s/200" % dir, 0.1, KeyEncoder.new('data/all_structures/%s/file_key.txt' % dir)) unless File.exist? 'data/dependency_graphs/%s/%s/itemset_occurrences/0.txt' % [dir, dir_num]
     end
   end
 end

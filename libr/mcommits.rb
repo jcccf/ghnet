@@ -85,10 +85,10 @@ end
 
 def parse_name(author_string)
   # author_string.match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
-  author_string.force_encoding('utf-8').match(/([\p{Word}\(\)\. \'\?\,]+) <([a-zA-Z0-9_@\.\,\+\-\(\) ]+)>\w*/)[1]
+  author_string.force_encoding('utf-8').match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/ ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
   # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
 rescue
-  Iconv.conv('utf-8', 'iso8859-1', author_string).match(/([\p{Word}\(\)\. \'\?\=]+) <([a-zA-Z0-9_@=\.\+\-\(\) ]+)>\w*/)[1]
+  Iconv.conv('utf-8', 'iso8859-1', author_string).match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/ ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
 end
 
 # Write a hash of authors => # of commits to a file
@@ -164,7 +164,10 @@ def file_commits_itemsets(commits, filename, json_filename, kenc=nil)
 end
 
 # Generate a list of 0s or 1s depending on whether an itemset is present in a commit
-def itemset_occurrences(commits, itemset, filename)
+def itemset_occurrences(commits, itemset, filename, kenc=nil)
+  unless kenc.nil?
+    itemset.map! { |i| kenc.decode(i) }
+  end
   itemset_set = Set.new(itemset)
   item_occurrences = {}
   itemset.each { |item| item_occurrences[item] = [] }
@@ -189,7 +192,7 @@ end
 
 # Given a list of commits, a directory of frequent itemsets, and a threshold,
 # output all occurrences for each itemset of the (threshold) most frequent itemsets
-def all_itemset_occurrences(commits_file, directory, threshold=0.1)
+def all_itemset_occurrences(commits_file, directory, threshold=0.1, kenc=nil)
   puts "Generating itemset occurrences with Threshold %f..." % threshold
   all_commits = MCommits.new(commits_file, 200, true).all_commits
   
@@ -213,7 +216,7 @@ def all_itemset_occurrences(commits_file, directory, threshold=0.1)
     Dir.mkdir('itemset_occurrences') if not File.exist? 'itemset_occurrences'
     i = 0
     frequencies.each do |itemset, frequency|
-      itemset_occurrences(all_commits, itemset, "itemset_occurrences/%d.txt" % i)
+      itemset_occurrences(all_commits, itemset, "itemset_occurrences/%d.txt" % i, kenc)
       i += 1
     end
   end
