@@ -55,30 +55,31 @@ def itemset_one_against_another(directory):
   # Generate Graphs for 1 against another
   for filename in glob.iglob(directory+'/itemset_occurrences/*.txt'):
     num = int(filename.rsplit("/", 1)[1].split(".", 1)[0])
-    with open(filename, 'r') as f:
-      iset = json.loads(f.read())
-      # main_xy_list = [(i,float(x)) for i, x in enumerate(iset['occurrences'])]
-      xy_lists, xy_lists_renumbered = [], []
-      for i1, i2 in itertools.combinations(iset['items'].keys(), 2):
-        try:
-          # Find the one that comes first,
-          i1list = [(i, float(x)) for i, x in enumerate(iset['items'][i1])]
-          i2list = [(i, float(x)) for i, x in enumerate(iset['items'][i2])]
-          i1exist = [(i,x) for i, x in i1list if x > 0]
-          i2exist = [(i,x) for i, x in i2list if x > 0]
-          i1min = min(i1exist, key=lambda x: x[0])[0]
-          i2min = min(i2exist, key=lambda x: x[0])[0]
-          if i1min > i2min: i1list, i2list, i1exist, i2exist = i2list, i1list, i2exist, i1exist
-          # Generate the scatter plot
-          i2exist = { i:x for i, x in i2exist } # turn i2exist into a hash
-          xy_list = [(i, i2exist[i] if i in i2exist else 0) for i, _ in i1exist]
-          xy_list_renumbered = [(j,x) for j, x in enumerate([x for i, x in xy_list])]
-          xy_lists.append(xy_list)
-          xy_lists_renumbered.append(xy_list_renumbered)
-        except:
-          print "Failed for ", num, iset['items'].keys(), i1, i2
-      DistributionPlot.line_plots(directory+"/itemset_occurrences/reg/%d" % num, xy_lists, sliding_window=50, title=str(iset['itemset']))
-      DistributionPlot.line_plots(directory+"/itemset_occurrences/renum/%d" % num, xy_lists_renumbered, sliding_window=10, title=str(iset['itemset']))
+    if num < 100:
+      with open(filename, 'r') as f:
+        iset = json.loads(f.read())
+        # main_xy_list = [(i,float(x)) for i, x in enumerate(iset['occurrences'])]
+        xy_lists, xy_lists_renumbered = [], []
+        for i1, i2 in itertools.combinations(iset['items'].keys(), 2):
+          try:
+            # Find the one that comes first,
+            i1list = [(i, float(x)) for i, x in enumerate(iset['items'][i1])]
+            i2list = [(i, float(x)) for i, x in enumerate(iset['items'][i2])]
+            i1exist = [(i,x) for i, x in i1list if x > 0]
+            i2exist = [(i,x) for i, x in i2list if x > 0]
+            i1min = min(i1exist, key=lambda x: x[0])[0]
+            i2min = min(i2exist, key=lambda x: x[0])[0]
+            if i1min > i2min: i1list, i2list, i1exist, i2exist = i2list, i1list, i2exist, i1exist
+            # Generate the scatter plot
+            i2exist = { i:x for i, x in i2exist } # turn i2exist into a hash
+            xy_list = [(i, i2exist[i] if i in i2exist else 0) for i, _ in i1exist]
+            xy_list_renumbered = [(j,x) for j, x in enumerate([x for i, x in xy_list])]
+            xy_lists.append(xy_list)
+            xy_lists_renumbered.append(xy_list_renumbered)
+          except:
+            print "Failed for ", num, iset['items'].keys(), i1, i2
+        DistributionPlot.line_plots(directory+"/itemset_occurrences/reg/%d" % num, xy_lists, sliding_window=50, title=str(iset['itemset']))
+        DistributionPlot.line_plots(directory+"/itemset_occurrences/renum/%d" % num, xy_lists_renumbered, sliding_window=10, title=str(iset['itemset']))
 
 # Generate Graphs for Itemset Occurrences
 def itemset_occurrences(directory):
@@ -110,7 +111,7 @@ def make_directories(directory):
       os.makedirs(out_dir)
 
 if __name__ == '__main__':
-  n = "200"
+  n = "200_10"
 
   dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
   
@@ -126,16 +127,16 @@ if __name__ == '__main__':
     # itemset_occurrences(directory)
 
     print "Graph of frac. of commits containing B against commits containing A..."
-    itemset_one_against_another(directory)
+    # itemset_one_against_another(directory)
   
     print "Unique Authors + Frequent Itemset Edges"
     auth_edges(directory)
     
     print "Conflict Graphs over Time"
-    fqdir.generate_and_add(directory)
-    fqdep.generate_and_add(directory)
-    fcdep.generate_and_add(directory)
+    # fqdir.generate_and_add(directory)
+    # fqdep.generate_and_add(directory)
+    # fcdep.generate_and_add(directory)
   
-  fqdir.plot_agg()
-  fqdep.plot_agg()
-  fcdep.plot_agg()
+  # fqdir.plot_agg()
+  # fqdep.plot_agg()
+  # fcdep.plot_agg()

@@ -143,7 +143,8 @@ def repo_all_commits(repo_dir, filename, detailed_filename)
       # Read 1 commit
       i = 0
       mg.files_commits(1) do |commit, paths, related|
-        commit_arr = {:sha => commit.sha, :author => commit.author_string.to_utf8, :message => commit.message.to_utf8, :date => commit.date}
+        commit_arr = {"sha" => commit.sha, "author" => commit.author_string.to_utf8, "message" => commit.message.to_utf8, "date" => commit.date}
+        commit_arr["parsed_author"] = parse_name(commit_arr["author"])
         commit_arr["paths"] = paths.map { |p| p.to_utf8 }
         commit_arr["related_files"] = related.map { |r1, r2| [r1.to_utf8, r2.to_utf8]}
         stat_files = {}

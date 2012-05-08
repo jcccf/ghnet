@@ -1,1 +1,1 @@
-__all__ = ['MDb', 'GithubScraper', 'MGraph', 'MFile', 'MGit', 'MList', 'MNode']
+__all__ = ['MDb', 'GithubScraper', 'MGraph', 'MFile', 'MGit', 'MList', 'MNode', 'MCollections']

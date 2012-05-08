@@ -69,7 +69,7 @@ def activity_plot(filename, lists, labels):
   
   plt.savefig('%s' % filename)
 
-def line_plots(filename, xy_lists, sliding_window=10, title=None):
+def line_plots(filename, xy_lists, xy_main=None, sliding_window=10, title=None, lines=True, scatter=True, xlabel=None, ylabel=None, xlim=None):
   plt.clf()
   fig = plt.figure()
   fig.set_size_inches(20,10)
@@ -78,16 +78,37 @@ def line_plots(filename, xy_lists, sliding_window=10, title=None):
   # Plot smoothed lines for other lists
   ccolors = colors(len(xy_lists))
   for i, listy in enumerate(xy_lists):
-    oxs2, oys2 = alt_smoothed_line(listy, sliding_window = sliding_window)
-    ax.plot(oxs2, oys2, color=ccolors[i])
-    xs, ys = zip(*listy)
-    ax.scatter(xs, ys, marker='.', color=ccolors[i])
+    if scatter is True:
+      xs, ys = zip(*listy)
+      ax.scatter(xs, ys, marker='.', color=ccolors[i])
+    if lines is True:
+      oxs2, oys2 = alt_smoothed_line(listy, sliding_window = sliding_window)
+      ax.plot(oxs2, oys2, color=ccolors[i])
+  
+  # Plot for main list (if any)
+  if xy_main is not None:
+    if scatter is True:
+      # Plot scatter for xy_list
+      xs, ys = zip(*xy_main)
+      ax.scatter(xs, ys, marker='x', color='b')
+      # ax.set_aspect(1.)  
+    if lines is True:
+      # Plot smoothed line for xy_list
+      xs2, ys2 = alt_smoothed_line(xy_main, sliding_window=sliding_window)
+      ax.plot(xs2, ys2, 'k')
+
   if title:
-    fig.text(.5, .95, title, horizontalalignment='center')
+    fig.text(.5, .95, title, horizontalalignment='center')    
+  if xlabel:
+    plt.xlabel(xlabel)
+  if ylabel:
+    plt.ylabel(ylabel)
+  if xlim:
+    plt.xlim(xlim)
 
   plt.savefig('%s' % filename)
 
-def scatter_plot(filename, xy_list, other_xy_lists=[], sliding_window=10, title=None):
+def scatter_plot(filename, xy_list, other_xy_lists=[], sliding_window=10, title=None, scatter=True):
   import numpy as np
   
   plt.clf()
@@ -98,16 +119,18 @@ def scatter_plot(filename, xy_list, other_xy_lists=[], sliding_window=10, title=
   # Plot smoothed lines for other lists
   ccolors = colors(len(other_xy_lists))
   for i, listy in enumerate(other_xy_lists):
-    oxs2, oys2 = smoothed_line(listy, sliding_window = sliding_window)
+    oxs2, oys2 = alt_smoothed_line(listy, sliding_window=sliding_window)
     ax.plot(oxs2, oys2, color=ccolors[i])
   
-  # Plot scatter for xy_list
   xs, ys = zip(*xy_list)
-  ax.scatter(xs, ys, marker='x', color='b')
-  # ax.set_aspect(1.)
+  
+  # Plot scatter for xy_list
+  if scatter is True:
+    ax.scatter(xs, ys, marker='x', color='b')
+    # ax.set_aspect(1.)
   
   # Plot smoothed line for xy_list
-  xs2, ys2 = smoothed_line(xy_list, sliding_window=sliding_window)
+  xs2, ys2 = alt_smoothed_line(xy_list, sliding_window=sliding_window)
   ax.plot(xs2, ys2, 'k')
   
   from mpl_toolkits.axes_grid1 import make_axes_locatable

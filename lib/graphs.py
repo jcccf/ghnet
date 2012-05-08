@@ -7,10 +7,11 @@ def make_directories(directory):
     if not os.path.exists(out_dir):
       os.makedirs(out_dir)
 
-def author_collaboration_graph(directory, i):
+def author_collaboration_graph(directory, i, draw_graph=True):
   g = MNode.csv_to_graph('%s/au_%d.txt' % (directory, i))
   a = MNode.graph_to_graphviz(g)
-  MNode.graphviz_to_image(a, '%s/author/g_au_%d.svg' % (directory, i))
+  if draw_graph is True:
+    MNode.graphviz_to_image(a, '%s/author/g_au_%d.png' % (directory, i))
 
 def itemset_graph(directory, i):
   g = MNode.csv_to_graph('%s/fq_%d.txt' % (directory, i))
@@ -36,11 +37,12 @@ class CommitConflicts:
     self.writer.writerow(["conflicts", "g_edges", "dig_edges", "dig_remaining"])
     self.superposition_fn = superposition_fn
     
-  def conflicts(self, i):
+  def conflicts(self, i, draw_graph=True):
     # Itemset Conflicts on Dir
     g, diG = MNode.csv_to_graph('%s/%s_%d.txt' % (self.directory, self.conflict_name, i)), MNode.csv_to_digraph('%s/%s_%d.txt' % (self.directory, self.base_name, i))
     a, conflicts, remaining_num = self.superposition_fn(diG, g, False)
-    MNode.graphviz_to_image(a, '%s/g_%s_%s_%d.svg' % (self.out_directory, self.conflict_name, self.base_name, i))
+    if draw_graph is True:
+      MNode.graphviz_to_image(a, '%s/g_%s_%s_%d.png' % (self.out_directory, self.conflict_name, self.base_name, i))
     # a, conflicts, remaining_num = self.superposition_fn(diG, g, False, True)
     # MNode.graphviz_to_image(a, '%s/g_%s_%s_%d_dot.svg' % (self.out_directory, self.conflict_name, self.base_name, i), prog='dot')
     # Write out conflicted edges to CSV in descending # of conflicts
@@ -57,25 +59,33 @@ class CommitConflicts:
     self.f.close()
 
 if __name__ == '__main__':  
-  n = 200
+  n = "200_10"
   dirs = [name for name in os.listdir('data/dependency_graphs') if os.path.isdir(os.path.join('data/dependency_graphs', name))]
   for diry in dirs:
     print diry
     directory = os.path.join('data/dependency_graphs', diry, str(n))
+    if os.path.exists(directory+"/author"):
+      continue
     make_directories(directory)
     conflicts_fq_dir = CommitConflicts(directory, 'fq', 'dir', superposition_fn=MNode.superposition_dir)
     conflicts_fq_dep = CommitConflicts(directory, 'fq', 'dep')
     conflicts_fc_dep = CommitConflicts(directory, 'fc', 'dep')
-    for filename in glob.iglob(directory+"/fq_*.txt"):
+    filenames = [f for f in glob.iglob(directory+"/fq_*.txt")]
+    num_files = len(filenames)
+    for filename in filenames:
       i = int(filename.rsplit("fq_", 1)[1].split(".")[0])
+      if num_files < 10:
+        draw_graph = True
+      else:
+        draw_graph = True if i % 10 == 0 else False
       # Itemset Conflicts on Directory Graph
-      conflicts_fq_dir.conflicts(i)
-      conflicts_fq_dep.conflicts(i)
-      conflicts_fc_dep.conflicts(i)
+      conflicts_fq_dir.conflicts(i, draw_graph)
+      conflicts_fq_dep.conflicts(i, draw_graph)
+      conflicts_fc_dep.conflicts(i, draw_graph)
       # Generate Author Collaboration Graph
-      author_collaboration_graph(directory, i)
-      # Generate Itemset Graph (and 1 with labels)
-      itemset_graph(directory, i)
+      author_collaboration_graph(directory, i, draw_graph)
+      # # Generate Itemset Graph (and 1 with labels)
+      # itemset_graph(directory, i)
     conflicts_fq_dir.close()
     conflicts_fq_dep.close()
     conflicts_fc_dep.close()

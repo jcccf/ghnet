@@ -15,6 +15,7 @@ class MCommits
     @commits_per_block = commits_per_block
     @yield_remainder = yield_remainder
     File.open(filename, 'rb') { |f| @commits = JSON.parse(f.read) }
+    @filename = filename
   end
   
   # Yield commits in blocks of commits_per_block
@@ -81,14 +82,23 @@ class MCommits
     @commits
   end
   
+  def add_parsed_authors
+    @commits.each do |commit|
+      commit['parsed_author'] = parse_name(commit['author'])
+    end
+    File.open(@filename, 'wb') do |f|
+      f.write(JSON.generate(@commits))
+    end
+  end
+  
 end
 
 def parse_name(author_string)
   # author_string.match(/([\p{Word}\(\)\. \'\?]+) <([a-zA-Z0-9_@\.\+\-\(\) ]+)>\w*/)[1]
-  author_string.force_encoding('utf-8').match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/ ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
+  author_string.force_encoding('utf-8').match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,\=]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/\= ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
   # p "föö. fo <abc@def.ghi> asd.a".match(/([\p{Word}\. ]+) <([a-zA-Z0-9_@\.\+]+)>\w*/)[0] == "föö. fo <abc@def.ghi>"
 rescue
-  Iconv.conv('utf-8', 'iso8859-1', author_string).match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/ ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
+  Iconv.conv('utf-8', 'iso8859-1', author_string).match(/[\p{Pi}\p{Pf}]*([\p{Word}\(\)\. \'\?\,\=]+)[\p{Pi}\p{Pf}]* <[\p{Pi}\p{Pf}]*([a-zA-Z0-9_@\.\,\+\-\(\)\:\/\= ]+)[\p{Pi}\p{Pf}]*>\w*/)[1]
 end
 
 # Write a hash of authors => # of commits to a file
@@ -105,7 +115,7 @@ def author_frequencies(commits, filename, kenc)
 end
 
 # Generate graph where nodes are files, edges are commits
-def files_commits_graph(commits, filename, kenc=nil)
+def file_commits_graph(commits, filename, kenc=nil)
   g = MGraph.new
   commits.each do |commit|
     commit['paths'].combination(2).each do |i, j|
@@ -133,6 +143,22 @@ def authors_files_graph(commits, filename, kenc=nil)
     end
   end
   g.to_file(filename, kenc)
+end
+
+def authors_additions_deletions(commits, filename)
+  authors = {}
+  commits.each do |commit|
+    puts commit['author']
+    auth = parse_name(commit['author'])
+    vals = [commit['stats']['additions'], commit['stats']['deletions'], commit['stats']['additions']+commit['stats']['deletions']]
+    authors[auth] ||= []
+    authors[auth] << vals
+  end
+  
+  File.open(filename, 'w') do |f|
+    f.write(JSON.generate(authors))
+  end
+  
 end
 
 # Generate graph where cliques are frequent files commonly modified together (itemsets)
